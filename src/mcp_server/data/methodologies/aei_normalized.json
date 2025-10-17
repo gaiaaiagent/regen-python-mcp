@@ -1,0 +1,99 @@
+{
+  "methodology_id": "aei",
+  "credit_class_id": "C02",
+  "official_name": "AEI Regenerative Soil Organic Carbon Methodology for Rangeland, Grassland, Agricultural, and Conservation Lands",
+  "scraped_at": "2025-10-11T17:14:55.852954",
+  "mrv": {
+    "monitoring_approach": "soil_sampling_laboratory_analysis",
+    "monitoring_frequency": "annual",
+    "sampling_requirements": "rigorous soil sampling protocols",
+    "verification_type": "independent_third_party",
+    "reporting_standards": [
+      "ISO",
+      "Verra",
+      "Climate Action Reserve"
+    ],
+    "evidence_sources": []
+  },
+  "additionality": {
+    "assessment_required": true,
+    "barrier_analysis": "comprehensive",
+    "baseline_methodology": "described",
+    "evidence_sources": []
+  },
+  "leakage": {
+    "assessment_approach": "landscape_level",
+    "boundary_definition": "clear_project_boundaries",
+    "risk_level": "low",
+    "evidence_sources": []
+  },
+  "traceability": {
+    "record_keeping": "blockchain_native",
+    "tracking_mechanism": "regen_registry",
+    "transparency_level": "high"
+  },
+  "cost_efficiency": {
+    "estimated_cost_per_credit": null,
+    "methodology_complexity": "moderate",
+    "implementation_requirements": [
+      "soil_sampling",
+      "lab_analysis"
+    ]
+  },
+  "permanence": {
+    "monitoring_period_years": 10,
+    "buffer_pool_percentage": 10,
+    "reversal_risk_management": "described",
+    "evidence_sources": []
+  },
+  "co_benefits": {
+    "documented_benefits": [
+      "soil_health_improvement",
+      "biodiversity_enhancement",
+      "water_quality_improvement",
+      "rural_economic_development"
+    ],
+    "quantification_approach": "qualitative_with_some_metrics",
+    "sdg_alignment": [
+      "SDG13",
+      "SDG15",
+      "SDG2"
+    ],
+    "evidence_sources": []
+  },
+  "accuracy": {
+    "measurement_protocols": [
+      "laboratory_analysis",
+      "field_sampling"
+    ],
+    "uncertainty_quantification": true,
+    "peer_review_status": "in_progress",
+    "standards_compliance": [
+      "IPCC_2003",
+      "ISO"
+    ]
+  },
+  "precision": {
+    "consistency_measures": "described",
+    "replication_protocols": true,
+    "statistical_validation": "required"
+  },
+  "project_requirements": {
+    "eligible_land_types": [
+      "rangeland",
+      "grassland",
+      "agricultural",
+      "conservation"
+    ],
+    "practices": [
+      "regenerative_agriculture",
+      "rotational_grazing",
+      "cover_cropping"
+    ],
+    "geographic_scope": "global_with_us_focus"
+  },
+  "raw_sections": {
+    "Document History": "Text LinkInitial submissionMarch 31, 2023No items found.Text LinkExpert peer review round 1August 2023 - July 2024Tom MiewaldProgram Director for the 1000 Landscapes for 1 Billion People Initiative. EcoAgriculture PartnersJohn GalloProject Director LinkageMapper, Senior Conservation Scientist Conservation Biology InstituteAnonymous 1Text LinkExpert peer review round 2August - September 2024John GalloProject Director LinkageMapper, Senior Conservation Scientist Conservation Biology InstituteTom MiewaldProgram Director for the 1000 Landscapes for 1 Billion People Initiative. EcoAgriculture PartnersAnonymous 1Text LinkPublic commentApril 17, 2025 - May 1, 2025No items found.",
+    "Methodology": "No items found."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "slug": "ecometric---ghg-benefits-in-managed-crop-and-grassland-systems-credit-class",
+  "scraped_at": "2025-10-11T17:14:56.012790",
+  "title": "GHG Benefits in Managed Crop and Grassland Systems Credit Class",
+  "description": null,
+  "sections": {
+    "Document History": "Text LinkInternal reviewJanuary - April 2023Sam BennettsRegen Registry Product Manager, Regen RegistryGisel Booman, PhDHead of Science, Regen RegistryNed HorningPrincipal Scientist, Regen RegistryTica LubinAssociate Director Registry DevelopmentText LinkInitial submissionSeptember 14, 2022No items found.Text LinkPublished version 1May 10,2023No items found.Text LinkExpert peer reviewSept 2022 - Dec 2022Apostolos Papadopoulos, PhDDirector, Crop Intellect LtdText LinkInternal review round 2Dec 1, 2022 - Sept 10, 2022Gisel Booman, PhDHead of Science, Regen RegistryNed HorningPrincipal Scientist, Regen RegistryText LinkPublished version 2 review processMay - July 2024Gisel Booman, PhDHead of Science, Regen RegistryNed HorningPrincipal Scientist, Regen RegistryTica LubinAssociate Director Registry DevelopmentText LinkInternal review round 1August 1, 2022Gisel Booman, PhDHead of Science, Regen RegistryNed HorningPrincipal Scientist, Regen Registry",
+    "Methodology": "PublishedmethodologyAmethodologyrefers to a structured and scientifically validated approach designed to quantify and assess the positive environmental impacts of specific actions or interventionsMethodology for Soil Organic Carbon Estimation in Regenerative Cropping and Managed Grassland EcosystemsThis methodology protocol proposes the use of remotely sensed multispectral imagery and soil sample results to train an Artificial Neural Network (ANN) to monitor changes in Soil Organic Carbon (SOC) stocks, within a project area, through time.learn more",
+    "Methodology for Soil Organic Carbon Estimation in Regenerative Cropping and Managed Grassland Ecosystems": "This methodology protocol proposes the use of remotely sensed multispectral imagery and soil sample results to train an Artificial Neural Network (ANN) to monitor changes in Soil Organic Carbon (SOC) stocks, within a project area, through time."
+  },
+  "metadata": {},
+  "tables": []
+}

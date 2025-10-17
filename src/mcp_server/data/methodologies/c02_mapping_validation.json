@@ -1,0 +1,27 @@
+{
+  "credit_class": "C02",
+  "validation_date": "2025-10-11",
+  "c02_project_count": 12,
+  "c02_batch_count": 12,
+  "aei_mapping": {
+    "methodology_id": "aei",
+    "credit_class_id": "C02",
+    "confidence": 1.0,
+    "recommendation": "CONFIRMED",
+    "checks": {
+      "geographic_alignment": true,
+      "project_type_alignment": true,
+      "mrv_alignment": true
+    }
+  },
+  "ecometric_mapping": {
+    "methodology_id": "ecometric",
+    "credit_class_id": "C02",
+    "confidence": 1.0,
+    "recommendation": "CONFIRMED",
+    "checks": {
+      "project_type_alignment": true,
+      "methodology_alignment": true
+    }
+  }
+}

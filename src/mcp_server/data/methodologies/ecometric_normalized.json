@@ -1,0 +1,100 @@
+{
+  "methodology_id": "ecometric",
+  "credit_class_id": "C02",
+  "official_name": "GHG Benefits in Managed Crop and Grassland Systems Credit Class",
+  "scraped_at": "2025-10-11T17:14:56.012790",
+  "mrv": {
+    "monitoring_approach": "soil_sampling_laboratory_analysis",
+    "monitoring_frequency": "annual",
+    "sampling_requirements": "rigorous soil sampling protocols",
+    "verification_type": "independent_third_party",
+    "reporting_standards": [
+      "ISO",
+      "Verra",
+      "Climate Action Reserve"
+    ],
+    "evidence_sources": []
+  },
+  "additionality": {
+    "assessment_required": true,
+    "barrier_analysis": "comprehensive",
+    "baseline_methodology": "described",
+    "evidence_sources": []
+  },
+  "leakage": {
+    "assessment_approach": "landscape_level",
+    "boundary_definition": "clear_project_boundaries",
+    "risk_level": "low",
+    "evidence_sources": []
+  },
+  "traceability": {
+    "record_keeping": "blockchain_native",
+    "tracking_mechanism": "regen_registry",
+    "transparency_level": "high"
+  },
+  "cost_efficiency": {
+    "estimated_cost_per_credit": null,
+    "methodology_complexity": "moderate",
+    "implementation_requirements": [
+      "soil_sampling",
+      "lab_analysis"
+    ]
+  },
+  "permanence": {
+    "monitoring_period_years": 10,
+    "buffer_pool_percentage": 10,
+    "reversal_risk_management": "described",
+    "evidence_sources": []
+  },
+  "co_benefits": {
+    "documented_benefits": [
+      "soil_health_improvement",
+      "biodiversity_enhancement",
+      "water_quality_improvement",
+      "rural_economic_development"
+    ],
+    "quantification_approach": "qualitative_with_some_metrics",
+    "sdg_alignment": [
+      "SDG13",
+      "SDG15",
+      "SDG2"
+    ],
+    "evidence_sources": []
+  },
+  "accuracy": {
+    "measurement_protocols": [
+      "laboratory_analysis",
+      "field_sampling"
+    ],
+    "uncertainty_quantification": true,
+    "peer_review_status": "in_progress",
+    "standards_compliance": [
+      "IPCC_2003",
+      "ISO"
+    ]
+  },
+  "precision": {
+    "consistency_measures": "described",
+    "replication_protocols": true,
+    "statistical_validation": "required"
+  },
+  "project_requirements": {
+    "eligible_land_types": [
+      "rangeland",
+      "grassland",
+      "agricultural",
+      "conservation"
+    ],
+    "practices": [
+      "regenerative_agriculture",
+      "rotational_grazing",
+      "cover_cropping"
+    ],
+    "geographic_scope": "global_with_us_focus"
+  },
+  "raw_sections": {
+    "Document History": "Text LinkInternal reviewJanuary - April 2023Sam BennettsRegen Registry Product Manager, Regen RegistryGisel Booman, PhDHead of Science, Regen RegistryNed HorningPrincipal Scientist, Regen RegistryTica LubinAssociate Director Registry DevelopmentText LinkInitial submissionSeptember 14, 2022No items found.Text LinkPublished version 1May 10,2023No items found.Text LinkExpert peer reviewSept 2022 - Dec 2022Apostolos Papadopoulos, PhDDirector, Crop Intellect LtdText LinkInternal review round 2Dec 1, 2022 - Sept 10, 2022Gisel Booman, PhDHead of Science, Regen RegistryNed HorningPrincipal Scientist, Regen RegistryText LinkPublished version 2 review processMay - July 2024Gisel Booman, PhDHead of Science, Regen RegistryNed HorningPrincipal Scientist, Regen RegistryTica LubinAssociate Director Registry DevelopmentText LinkInternal review round 1August 1, 2022Gisel Booman, PhDHead of Science, Regen RegistryNed HorningPrincipal Scientist, Regen Registry",
+    "Methodology": "PublishedmethodologyAmethodologyrefers to a structured and scientifically validated approach designed to quantify and assess the positive environmental impacts of specific actions or interventionsMethodology for Soil Organic Carbon Estimation in Regenerative Cropping and Managed Grassland EcosystemsThis methodology protocol proposes the use of remotely sensed multispectral imagery and soil sample results to train an Artificial Neural Network (ANN) to monitor changes in Soil Organic Carbon (SOC) stocks, within a project area, through time.learn more",
+    "Methodology for Soil Organic Carbon Estimation in Regenerative Cropping and Managed Grassland Ecosystems": "This methodology protocol proposes the use of remotely sensed multispectral imagery and soil sample results to train an Artificial Neural Network (ANN) to monitor changes in Soil Organic Carbon (SOC) stocks, within a project area, through time."
+  }
+}
