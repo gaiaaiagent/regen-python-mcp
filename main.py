@@ -7,7 +7,7 @@ import os
 # Add src to Python path so we can import our server
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-from mcp_server.server_modular import server
+from mcp_server.server import server
 
 
 def main():

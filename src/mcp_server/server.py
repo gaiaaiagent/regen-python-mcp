@@ -1,388 +1,379 @@
+#!/usr/bin/env python3
 """
-Integrated Regen MCP Server
-Combines tools from all three implementation trees into a unified server.
+Modular Regen Network MCP Server.
+
+Properly organized server that imports tools and prompts from their respective modules.
+Follows Python best practices and maintains clean separation of concerns.
 """
 
-from mcp.server import FastMCP
-from typing import Dict, Any, List, Optional
-import os
+import logging
+import sys
+from pathlib import Path
+from typing import Any, Dict, Optional, List, Union
 
-# Import all tools
-from .prompts import (
-    chain_exploration,
-    ecocredit_query_workshop,
-    marketplace_investigation,
-    project_discovery,
-    credit_batch_analysis,
-    list_regen_capabilities,
-    query_builder_assistant,
-    chain_config_setup,
-    methodology_comparison,
+# Add the src directory to Python path
+src_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(src_dir))
+
+from mcp.server.fastmcp import FastMCP
+
+# Import all tool modules
+from mcp_server.tools import (
+    bank_tools,
+    distribution_tools, 
+    governance_tools,
+    marketplace_tools,
+    basket_tools,
+    credit_tools,
+    analytics_tools,
+    cache_tools
 )
 
-from .tools import (
-    # Basket tools (Tree 1)
-    list_baskets,
-    get_basket,
-    list_basket_balances,
-    get_basket_balance,
-    get_basket_fee,
-    # Analytics tools (Tree 1)
-    analyze_portfolio_impact,
-    analyze_market_trends,
-    compare_credit_methodologies,
-    # Methodology Comparison tools (9-criteria framework)
-    compare_methodologies_nine_criteria,
-    BUYER_PRESETS,
-    # Export tools
-    generate_comparison_onepager,
-    save_report_to_file,
-    # Cache tools (Tree 1)
-    clear_cache,
-    get_cache_stats,
-    invalidate_cache_key,
-    # Credit tools (Tree 2)
-    list_credit_types,
-    list_credit_classes,
-    list_projects,
-    list_credit_batches,
-    # Marketplace tools (Tree 2)
-    get_sell_order,
-    list_sell_orders,
-    list_sell_orders_by_batch,
-    list_sell_orders_by_seller,
-    list_allowed_denoms,
-    # Bank tools (Tree 3)
-    get_balance,
-    get_all_balances,
-    get_spendable_balances,
-    get_total_supply,
-    get_supply_of
+# Import all prompt functions with aliases to avoid name collisions
+from mcp_server.prompts import (
+    list_regen_capabilities as list_capabilities_impl,
+    chain_exploration as chain_exploration_impl,
+    ecocredit_query_workshop as ecocredit_workshop_impl,
+    credit_batch_analysis as batch_analysis_impl,
+    marketplace_investigation as marketplace_impl,
+    project_discovery as project_discovery_impl,
+    query_builder_assistant as query_builder_impl,
+    chain_config_setup as config_setup_impl
 )
 
-# Create the FastMCP server instance
-mcp = FastMCP(name="Regen Network Integrated MCP")
+logger = logging.getLogger(__name__)
 
-# ============================================================================
-# BASKET TOOLS (Tree 1) - 5 tools
-# ============================================================================
 
-@mcp.tool()
-async def list_baskets_tool(limit: int = 10, offset: int = 0) -> Dict[str, Any]:
-    """List all active ecocredit baskets on Regen Network."""
-    return await list_baskets(limit, offset)
+def create_modular_regen_mcp_server() -> FastMCP:
+    """Create modular Regen Network MCP server with proper organization."""
+    
+    server = FastMCP(
+        name="regen-network-mcp-modular",
+        dependencies=["pydantic>=2.0.0", "httpx>=0.24.0", "structlog>=23.0.0"]
+    )
+    
+    # ==============================================
+    # BANK MODULE TOOLS (11 TOOLS)
+    # ==============================================
+    
+    @server.tool()
+    async def list_accounts(page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """List all accounts on Regen Network."""
+        return await bank_tools.list_accounts(page, limit)
+    
+    @server.tool()
+    async def get_account(address: str) -> Dict[str, Any]:
+        """Get detailed account information."""
+        return await bank_tools.get_account(address)
+    
+    @server.tool()
+    async def get_balance(address: str, denom: str) -> Dict[str, Any]:
+        """Get specific token balance for account."""
+        return await bank_tools.get_balance(address, denom)
+    
+    @server.tool()
+    async def get_all_balances(address: str, page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """Get all token balances for account."""
+        return await bank_tools.get_all_balances(address, page, limit)
+    
+    @server.tool()
+    async def get_spendable_balances(address: str, page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """Get spendable balances for account."""
+        return await bank_tools.get_spendable_balances(address, page, limit)
+    
+    @server.tool()
+    async def get_total_supply(page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """Get total supply of all tokens."""
+        return await bank_tools.get_total_supply(page, limit)
+    
+    @server.tool()
+    async def get_supply_of(denom: str) -> Dict[str, Any]:
+        """Get total supply of specific token."""
+        return await bank_tools.get_supply_of(denom)
+    
+    @server.tool()
+    async def get_bank_params() -> Dict[str, Any]:
+        """Get bank module parameters."""
+        return await bank_tools.get_bank_params()
+    
+    @server.tool()
+    async def get_denoms_metadata(page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """Get metadata for all tokens."""
+        return await bank_tools.get_denoms_metadata(page, limit)
+    
+    @server.tool()
+    async def get_denom_metadata(denom: str) -> Dict[str, Any]:
+        """Get metadata for specific token."""
+        return await bank_tools.get_denom_metadata(denom)
+    
+    @server.tool()
+    async def get_denom_owners(denom: str, page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """Get all holders of a token."""
+        return await bank_tools.get_denom_owners(denom, page, limit)
+    
+    # ==============================================
+    # DISTRIBUTION MODULE TOOLS (9 TOOLS)
+    # ==============================================
+    
+    @server.tool()
+    async def get_distribution_params() -> Dict[str, Any]:
+        """Get distribution module parameters."""
+        return await distribution_tools.get_distribution_params()
+    
+    @server.tool()
+    async def get_validator_outstanding_rewards(validator_address: str) -> Dict[str, Any]:
+        """Get outstanding rewards for a validator."""
+        return await distribution_tools.get_validator_outstanding_rewards(validator_address)
+    
+    @server.tool()
+    async def get_validator_commission(validator_address: str) -> Dict[str, Any]:
+        """Get commission for a validator."""
+        return await distribution_tools.get_validator_commission(validator_address)
+    
+    @server.tool()
+    async def get_validator_slashes(
+        validator_address: str,
+        starting_height: Optional[int] = None,
+        ending_height: Optional[int] = None,
+        page: int = 1,
+        limit: int = 100
+    ) -> Dict[str, Any]:
+        """Get slashing events for a validator."""
+        return await distribution_tools.get_validator_slashes(
+            validator_address, starting_height, ending_height, page, limit
+        )
+    
+    @server.tool()
+    async def get_delegation_rewards(delegator_address: str, validator_address: str) -> Dict[str, Any]:
+        """Get delegation rewards for specific delegator-validator pair."""
+        return await distribution_tools.get_delegation_rewards(delegator_address, validator_address)
+    
+    @server.tool()
+    async def get_delegation_total_rewards(delegator_address: str) -> Dict[str, Any]:
+        """Get total delegation rewards for a delegator."""
+        return await distribution_tools.get_delegation_total_rewards(delegator_address)
+    
+    @server.tool()
+    async def get_delegator_validators(delegator_address: str) -> Dict[str, Any]:
+        """Get validators that a delegator is bonded to."""
+        return await distribution_tools.get_delegator_validators(delegator_address)
+    
+    @server.tool()
+    async def get_delegator_withdraw_address(delegator_address: str) -> Dict[str, Any]:
+        """Get withdraw address for a delegator."""
+        return await distribution_tools.get_delegator_withdraw_address(delegator_address)
+    
+    @server.tool()
+    async def get_community_pool() -> Dict[str, Any]:
+        """Get community pool balance."""
+        return await distribution_tools.get_community_pool()
+    
+    # ==============================================
+    # GOVERNANCE MODULE TOOLS (8 TOOLS)
+    # ==============================================
+    
+    @server.tool()
+    async def get_governance_proposal(proposal_id: Union[str, int]) -> Dict[str, Any]:
+        """Get specific governance proposal."""
+        return await governance_tools.get_governance_proposal(proposal_id)
+    
+    @server.tool()
+    async def list_governance_proposals(
+        page: int = 1,
+        limit: int = 100,
+        proposal_status: Optional[str] = None,
+        voter: Optional[str] = None,
+        depositor: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """List governance proposals with optional filters."""
+        return await governance_tools.list_governance_proposals(page, limit, proposal_status, voter, depositor)
+    
+    @server.tool()
+    async def get_governance_vote(proposal_id: Union[str, int], voter: str) -> Dict[str, Any]:
+        """Get specific vote on a proposal."""
+        return await governance_tools.get_governance_vote(proposal_id, voter)
+    
+    @server.tool()
+    async def list_governance_votes(proposal_id: Union[str, int], page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """List votes for a specific proposal."""
+        return await governance_tools.list_governance_votes(proposal_id, page, limit)
+    
+    @server.tool()
+    async def list_governance_deposits(proposal_id: Union[str, int], page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """List deposits for a specific proposal."""
+        return await governance_tools.list_governance_deposits(proposal_id, page, limit)
+    
+    @server.tool()
+    async def get_governance_params(params_type: str) -> Dict[str, Any]:
+        """Get governance parameters."""
+        return await governance_tools.get_governance_params(params_type)
+    
+    @server.tool()
+    async def get_governance_deposit(proposal_id: Union[str, int], depositor: str) -> Dict[str, Any]:
+        """Get specific deposit for a proposal."""
+        return await governance_tools.get_governance_deposit(proposal_id, depositor)
+    
+    @server.tool()
+    async def get_governance_tally_result(proposal_id: Union[str, int]) -> Dict[str, Any]:
+        """Get vote tally for a proposal."""
+        return await governance_tools.get_governance_tally_result(proposal_id)
+    
+    # ==============================================
+    # MARKETPLACE MODULE TOOLS (5 TOOLS)
+    # ==============================================
+    
+    @server.tool()
+    async def get_sell_order(sell_order_id: Union[str, int]) -> Dict[str, Any]:
+        """Get specific marketplace sell order."""
+        return await marketplace_tools.get_sell_order(sell_order_id)
+    
+    @server.tool()
+    async def list_sell_orders(page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """List all active sell orders."""
+        return await marketplace_tools.list_sell_orders(page, limit)
+    
+    @server.tool()
+    async def list_sell_orders_by_batch(batch_denom: str, page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """List sell orders for specific batch."""
+        return await marketplace_tools.list_sell_orders_by_batch(batch_denom, page, limit)
+    
+    @server.tool()
+    async def list_sell_orders_by_seller(seller: str, page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """List sell orders by seller."""
+        return await marketplace_tools.list_sell_orders_by_seller(seller, page, limit)
+    
+    @server.tool()
+    async def list_allowed_denoms(page: int = 1, limit: int = 100) -> Dict[str, Any]:
+        """List allowed payment tokens."""
+        return await marketplace_tools.list_allowed_denoms(page, limit)
+    
+    # ==============================================
+    # ECOCREDITS MODULE TOOLS (4 TOOLS)
+    # ==============================================
+    
+    @server.tool()
+    async def list_credit_types() -> Dict[str, Any]:
+        """List all enabled credit types."""
+        return await credit_tools.list_credit_types()
+    
+    @server.tool()
+    async def list_classes(limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """List all credit classes."""
+        return await credit_tools.list_credit_classes(limit, offset)
+    
+    @server.tool()
+    async def list_projects(limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """List all registered projects."""
+        return await credit_tools.list_projects(limit, offset, count_total=True, reverse=False)
+    
+    @server.tool()
+    async def list_credit_batches(limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """List all credit batches."""
+        return await credit_tools.list_credit_batches(limit, offset, count_total=True, reverse=False)
+    
+    # ==============================================
+    # BASKETS MODULE TOOLS (5 TOOLS)
+    # ==============================================
+    
+    @server.tool()
+    async def list_baskets(limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """List all ecocredit baskets."""
+        return await basket_tools.list_baskets(limit, offset)
+    
+    @server.tool()
+    async def get_basket(basket_denom: str) -> Dict[str, Any]:
+        """Get specific basket information."""
+        return await basket_tools.get_basket(basket_denom)
+    
+    @server.tool()
+    async def list_basket_balances(basket_denom: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """List credit batches in basket."""
+        return await basket_tools.list_basket_balances(basket_denom, limit, offset)
+    
+    @server.tool()
+    async def get_basket_balance(basket_denom: str, batch_denom: str) -> Dict[str, Any]:
+        """Get specific batch balance in basket."""
+        return await basket_tools.get_basket_balance(basket_denom, batch_denom)
+    
+    @server.tool()
+    async def get_basket_fee() -> Dict[str, Any]:
+        """Get basket creation fee."""
+        return await basket_tools.get_basket_fee()
+    
+    # ==============================================
+    # ANALYTICS TOOLS (3 TOOLS)
+    # ==============================================
 
-@mcp.tool()
-async def get_basket_tool(basket_denom: str) -> Dict[str, Any]:
-    """Get detailed information about a specific basket."""
-    return await get_basket(basket_denom)
+    @server.tool()
+    async def analyze_portfolio_impact(
+        address: str,
+        analysis_type: str = "full"
+    ) -> Dict[str, Any]:
+        """Advanced portfolio ecological impact analysis."""
+        return await analytics_tools.analyze_portfolio_impact(address, analysis_type)
 
-@mcp.tool()
-async def list_basket_balances_tool(basket_denom: str, limit: int = 10, offset: int = 0) -> Dict[str, Any]:
-    """List all credit batch balances held in a basket."""
-    return await list_basket_balances(basket_denom, limit, offset)
+    @server.tool()
+    async def analyze_market_trends(
+        time_period: str = "30d",
+        credit_types: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """Analyze market trends across credit types with historical data analysis."""
+        return await analytics_tools.analyze_market_trends(time_period, credit_types)
 
-@mcp.tool()
-async def get_basket_balance_tool(basket_denom: str, batch_denom: str) -> Dict[str, Any]:
-    """Get the balance of a specific credit batch in a basket."""
-    return await get_basket_balance(basket_denom, batch_denom)
+    @server.tool()
+    async def compare_credit_methodologies(class_ids: List[str]) -> Dict[str, Any]:
+        """Compare different credit class methodologies for impact efficiency analysis."""
+        return await analytics_tools.compare_credit_methodologies(class_ids)
+    
+    # ==============================================
+    # INTERACTIVE PROMPTS (8 PROMPTS)
+    # ==============================================
+    
+    @server.prompt()
+    async def list_regen_capabilities() -> str:
+        """Comprehensive list of all Regen MCP capabilities."""
+        return await list_capabilities_impl()
+    
+    @server.prompt()
+    async def chain_exploration(chain_info: Optional[str] = None) -> str:
+        """Interactive Regen Network exploration guide."""
+        return await chain_exploration_impl(chain_info)
+    
+    @server.prompt()
+    async def ecocredit_query_workshop(focus_area: Optional[str] = None) -> str:
+        """Comprehensive ecocredit analysis workshop."""
+        return await ecocredit_workshop_impl(focus_area)
+    
+    @server.prompt()
+    async def credit_batch_analysis(batch_denom: Optional[str] = None) -> str:
+        """Credit batch lifecycle analysis."""
+        return await batch_analysis_impl(batch_denom)
+    
+    @server.prompt()
+    async def marketplace_investigation(market_focus: Optional[str] = None) -> str:
+        """Carbon market analytics and investigation."""
+        return await marketplace_impl(market_focus)
+    
+    @server.prompt()
+    async def project_discovery(criteria: Optional[str] = None) -> str:
+        """Find and analyze ecological projects."""
+        return await project_discovery_impl(criteria)
+    
+    @server.prompt()
+    async def query_builder_assistant(query_type: Optional[str] = None) -> str:
+        """Build complex queries step-by-step."""
+        return await query_builder_impl(query_type)
+    
+    @server.prompt()
+    async def chain_config_setup() -> str:
+        """Chain connection configuration guide."""
+        return await config_setup_impl()
+    
+    return server
 
-@mcp.tool()
-async def get_basket_fee_tool() -> Dict[str, Any]:
-    """Get the current fee required to create a new basket."""
-    return await get_basket_fee()
 
-# ============================================================================
-# ANALYTICS TOOLS (Tree 1) - 3 tools
-# ============================================================================
-
-@mcp.tool()
-async def analyze_portfolio_impact_tool(
-    portfolio_addresses: List[str],
-    include_retired: bool = True,
-    calculate_metrics: bool = True
-) -> Dict[str, Any]:
-    """Analyze the environmental impact of a portfolio of credit holdings."""
-    return await analyze_portfolio_impact(portfolio_addresses, include_retired, calculate_metrics)
-
-@mcp.tool()
-async def analyze_market_trends_tool(
-    time_period_days: int = 30,
-    credit_types: Optional[List[str]] = None
-) -> Dict[str, Any]:
-    """Analyze market trends for ecological credits."""
-    return await analyze_market_trends(time_period_days, credit_types)
-
-@mcp.tool()
-async def compare_credit_methodologies_tool(
-    methodology_ids: List[str],
-    comparison_metrics: Optional[List[str]] = None
-) -> Dict[str, Any]:
-    """Compare different credit methodologies and their effectiveness."""
-    return await compare_credit_methodologies(methodology_ids, comparison_metrics)
-
-# ============================================================================
-# METHODOLOGY COMPARISON TOOLS (9-criteria framework) - 1 tool
-# ============================================================================
-
-@mcp.tool()
-async def compare_methodologies_nine_criteria_tool(
-    methodology_ids: List[str],
-    buyer_preset: str = "high_integrity"
-) -> List[Dict[str, Any]]:
-    """Compare methodologies using 9-criteria framework with buyer-specific weighting.
-
-    Assesses methodologies across 9 criteria: MRV, Additionality, Leakage, Traceability,
-    Cost Efficiency, Permanence, Co-Benefits, Accuracy, and Precision.
-
-    Args:
-        methodology_ids: List of credit class IDs to compare (e.g., ["C02", "C01"])
-        buyer_preset: Buyer profile ("high_integrity", "eu_risk_sensitive", or "net_zero")
-
-    Returns:
-        List of methodology comparison results with scores, evidence, and recommendations
-    """
-    results = await compare_methodologies_nine_criteria(methodology_ids, buyer_preset)
-    # Convert Pydantic models to dicts for MCP response
-    return [result.model_dump() for result in results]
-
-# ============================================================================
-# EXPORT TOOLS - 1 tool
-# ============================================================================
-
-@mcp.tool()
-async def export_methodology_comparison_tool(
-    methodology_ids: List[str],
-    buyer_preset: str = "high_integrity",
-    output_format: str = "markdown",
-    save_to_file: bool = False
-) -> Dict[str, Any]:
-    """Export methodology comparison as a one-pager report.
-
-    Generates a professional one-pager report for methodology comparisons,
-    suitable for buyer decision-making and stakeholder presentations.
-
-    Args:
-        methodology_ids: List of credit class IDs to compare (e.g., ["C02", "C01"])
-        buyer_preset: Buyer profile ("high_integrity", "eu_risk_sensitive", or "net_zero")
-        output_format: Output format ("markdown" or "html")
-        save_to_file: Whether to save the report to a file
-
-    Returns:
-        Report content and metadata
-    """
-    # Run comparison
-    comparison_results = await compare_methodologies_nine_criteria(methodology_ids, buyer_preset)
-
-    # Generate report
-    report_content = generate_comparison_onepager(comparison_results, buyer_preset, output_format)
-
-    # Optionally save to file
-    file_path = None
-    if save_to_file:
-        from pathlib import Path
-        file_path = save_report_to_file(report_content, format=output_format)
-        file_path = str(file_path)
-
-    return {
-        "report_content": report_content,
-        "format": output_format,
-        "buyer_preset": buyer_preset,
-        "methodology_ids": methodology_ids,
-        "length_chars": len(report_content),
-        "length_lines": len(report_content.split("\n")),
-        "file_path": file_path
-    }
-
-# ============================================================================
-# CACHE TOOLS (Tree 1) - 3 tools
-# ============================================================================
-
-@mcp.tool()
-async def clear_cache_tool() -> Dict[str, Any]:
-    """Clear all cached data."""
-    return await clear_cache()
-
-@mcp.tool()
-async def get_cache_stats_tool() -> Dict[str, Any]:
-    """Get statistics about the current cache usage."""
-    return await get_cache_stats()
-
-@mcp.tool()
-async def invalidate_cache_key_tool(key: str) -> Dict[str, Any]:
-    """Invalidate a specific cache key."""
-    return await invalidate_cache_key(key)
-
-# ============================================================================
-# CREDIT TOOLS (Tree 2) - 4 tools
-# ============================================================================
-
-@mcp.tool()
-async def list_credit_types_tool() -> Dict[str, Any]:
-    """List all enabled credit types on Regen Network."""
-    return await list_credit_types()
-
-@mcp.tool()
-async def list_credit_classes_tool(limit: int = 10, offset: int = 0) -> Dict[str, Any]:
-    """List all credit classes with pagination."""
-    return await list_credit_classes(limit, offset)
-
-@mcp.tool()
-async def list_projects_tool(limit: int = 10, offset: int = 0) -> Dict[str, Any]:
-    """List all registered projects on Regen Network."""
-    return await list_projects(limit, offset)
-
-@mcp.tool()
-async def list_credit_batches_tool(limit: int = 10, offset: int = 0) -> Dict[str, Any]:
-    """List all issued credit batches."""
-    return await list_credit_batches(limit, offset)
-
-# ============================================================================
-# MARKETPLACE TOOLS (Tree 2) - 5 tools
-# ============================================================================
-
-@mcp.tool()
-async def get_sell_order_tool(sell_order_id: str) -> Dict[str, Any]:
-    """Get details of a specific sell order."""
-    return await get_sell_order(sell_order_id)
-
-@mcp.tool()
-async def list_sell_orders_tool(page: int = 1, limit: int = 10) -> Dict[str, Any]:
-    """List all active sell orders on the marketplace."""
-    return await list_sell_orders(page, limit)
-
-@mcp.tool()
-async def list_sell_orders_by_batch_tool(batch_denom: str, page: int = 1, limit: int = 10) -> Dict[str, Any]:
-    """List sell orders for a specific credit batch."""
-    return await list_sell_orders_by_batch(batch_denom, page, limit)
-
-@mcp.tool()
-async def list_sell_orders_by_seller_tool(seller: str, page: int = 1, limit: int = 10) -> Dict[str, Any]:
-    """List sell orders created by a specific seller."""
-    return await list_sell_orders_by_seller(seller, page, limit)
-
-@mcp.tool()
-async def list_allowed_denoms_tool(page: int = 1, limit: int = 10) -> Dict[str, Any]:
-    """List all coin denominations approved for marketplace use."""
-    return await list_allowed_denoms(page, limit)
-
-# ============================================================================
-# BANK TOOLS (Tree 3) - 5 tools
-# ============================================================================
-
-@mcp.tool()
-async def get_balance_tool(address: str, denom: str) -> Dict[str, Any]:
-    """Get the balance of a specific token for an account."""
-    return await get_balance(address, denom)
-
-@mcp.tool()
-async def get_all_balances_tool(address: str, page: int = 1, limit: int = 100) -> Dict[str, Any]:
-    """Get all token balances for an account."""
-    return await get_all_balances(address, page, limit)
-
-@mcp.tool()
-async def get_spendable_balances_tool(address: str, page: int = 1, limit: int = 100) -> Dict[str, Any]:
-    """Get spendable balances for an account."""
-    return await get_spendable_balances(address, page, limit)
-
-@mcp.tool()
-async def get_total_supply_tool(page: int = 1, limit: int = 100) -> Dict[str, Any]:
-    """Get the total supply of all denominations."""
-    return await get_total_supply(page, limit)
-
-@mcp.tool()
-async def get_supply_of_tool(denom: str) -> Dict[str, Any]:
-    """Get the total supply of a specific denomination."""
-    return await get_supply_of(denom)
-
-# ============================================================================
-# RESOURCES (optional - from Tree 1)
-# ============================================================================
-
-@mcp.resource("regen://chain/config")
-async def get_chain_config() -> Dict[str, Any]:
-    """Get the current chain configuration."""
-    return {
-        "chain_id": "regen-1",
-        "rpc_url": os.getenv("REGEN_RPC_URL", "https://regen-rpc.polkachu.com"),
-        "version": "v5.0.0",
-        "modules": ["ecocredit", "bank", "marketplace", "basket"]
-    }
-
-@mcp.resource("regen://tools/summary")
-async def get_tools_summary() -> Dict[str, Any]:
-    """Get a summary of all available tools."""
-    from .tools import get_tool_summary
-    return get_tool_summary()
-
-# ============================================================================
-# PROMPTS - Interactive guides and workflows
-# ============================================================================
-
-@mcp.prompt()
-async def chain_exploration_prompt(chain_info: str = None) -> str:
-    """Interactive chain exploration guide for Regen Network."""
-    return await chain_exploration(chain_info)
-
-@mcp.prompt()
-async def ecocredit_query_workshop_prompt(focus_area: str = None) -> str:
-    """Comprehensive ecocredit module query guide."""
-    return await ecocredit_query_workshop(focus_area)
-
-@mcp.prompt()
-async def marketplace_investigation_prompt(market_focus: str = None) -> str:
-    """Market analysis and trading query guidance."""
-    return await marketplace_investigation(market_focus)
-
-@mcp.prompt()
-async def project_discovery_prompt(criteria: str = None) -> str:
-    """Project discovery and analysis workflows."""
-    return await project_discovery(criteria)
-
-@mcp.prompt()
-async def credit_batch_analysis_prompt(batch_denom: str = None) -> str:
-    """Deep dive analysis into credit batches."""
-    return await credit_batch_analysis(batch_denom)
-
-@mcp.prompt()
-async def list_regen_capabilities_prompt() -> str:
-    """Complete reference of all Regen MCP server capabilities."""
-    return await list_regen_capabilities()
-
-@mcp.prompt()
-async def query_builder_assistant_prompt(query_type: str = None) -> str:
-    """Help building complex queries step by step."""
-    return await query_builder_assistant(query_type)
-
-@mcp.prompt()
-async def chain_config_setup_prompt() -> str:
-    """Guide for setting up chain configuration."""
-    return await chain_config_setup()
-
-@mcp.prompt()
-async def methodology_comparison_prompt(
-    methodology_ids: Optional[List[str]] = None,
-    buyer_preset: Optional[str] = None
-) -> str:
-    """9-criteria methodology comparison and buyer decision support."""
-    return await methodology_comparison(methodology_ids, buyer_preset)
-
-# ============================================================================
-# SERVER CONFIGURATION
-# ============================================================================
-
-def get_server():
-    """Get the MCP server instance."""
-    return mcp
+# Create the server instance
+server = create_modular_regen_mcp_server()
 
 if __name__ == "__main__":
-    # Run the server
-    import asyncio
-
-    print("Starting Regen Network Integrated MCP Server...")
-    print("Version: 1.0.0")
-    print("Tools available: 27")
-    print("Prompts available: 9")
-    print("-" * 50)
-
-    mcp.run()
+    server.run()

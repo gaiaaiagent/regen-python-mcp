@@ -148,6 +148,24 @@ class RegenClient:
             await self._http_client.aclose()
             self._http_client = None
             logger.info("RegenClient HTTP client closed")
+
+    def _parse_pagination_response(self, response: Dict[str, Any]) -> Optional[PaginationResponse]:
+        """Parse pagination information from API response.
+
+        Args:
+            response: API response dictionary
+
+        Returns:
+            PaginationResponse object or None if no pagination info present
+        """
+        pagination_data = response.get("pagination")
+        if not pagination_data:
+            return None
+
+        return PaginationResponse(
+            next_key=pagination_data.get("next_key"),
+            total=int(pagination_data["total"]) if pagination_data.get("total") else None
+        )
     
     async def __aenter__(self):
         """Async context manager entry."""
@@ -399,10 +417,10 @@ class RegenClient:
     
     async def query_sell_order(self, sell_order_id: Union[int, str]) -> Dict[str, Any]:
         """Query specific sell order by ID.
-        
+
         Args:
             sell_order_id: Sell order ID
-            
+
         Returns:
             Dictionary containing sell order information
         """
@@ -414,6 +432,88 @@ class RegenClient:
             return response
         except Exception as e:
             logger.error(f"Failed to query sell order {sell_order_id}: {e}")
+            raise
+
+    async def query_sell_orders_by_batch(
+        self,
+        batch_denom: str,
+        pagination: Optional[Pagination] = None
+    ) -> Dict[str, Any]:
+        """Query sell orders for a specific credit batch.
+
+        Args:
+            batch_denom: Credit batch denomination
+            pagination: Pagination parameters
+
+        Returns:
+            Dictionary containing sell orders for the batch
+        """
+        params = {"batch_denom": batch_denom}
+        if pagination:
+            params.update(pagination.to_query_params())
+
+        try:
+            response = await self._make_request(
+                "/regen/ecocredit/marketplace/v1/sell-orders-by-batch",
+                endpoint_type="rest",
+                params=params
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Failed to query sell orders for batch {batch_denom}: {e}")
+            raise
+
+    async def query_sell_orders_by_seller(
+        self,
+        seller: str,
+        pagination: Optional[Pagination] = None
+    ) -> Dict[str, Any]:
+        """Query sell orders by seller address.
+
+        Args:
+            seller: Seller address
+            pagination: Pagination parameters
+
+        Returns:
+            Dictionary containing sell orders from the seller
+        """
+        params = {"seller": seller}
+        if pagination:
+            params.update(pagination.to_query_params())
+
+        try:
+            response = await self._make_request(
+                "/regen/ecocredit/marketplace/v1/sell-orders-by-seller",
+                endpoint_type="rest",
+                params=params
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Failed to query sell orders for seller {seller}: {e}")
+            raise
+
+    async def query_allowed_denoms(self, pagination: Optional[Pagination] = None) -> Dict[str, Any]:
+        """Query allowed payment denominations in marketplace.
+
+        Args:
+            pagination: Pagination parameters
+
+        Returns:
+            Dictionary containing allowed denominations
+        """
+        params = {}
+        if pagination:
+            params.update(pagination.to_query_params())
+
+        try:
+            response = await self._make_request(
+                "/regen/ecocredit/marketplace/v1/allowed-denoms",
+                endpoint_type="rest",
+                params=params
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Failed to query allowed denoms: {e}")
             raise
     
     async def query_basket_balances(

@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "regen-network": {
+      "command": "/home/ygg/.local/bin/uv",
+      "args": [
+        "run",
+        "--directory",
+        "/home/ygg/Workspace/sandbox/regen-python-mcp",
+        "python",
+        "main.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/ygg/Workspace/sandbox/regen-python-mcp/src",
+        "REGEN_MCP_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}

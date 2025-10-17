@@ -9,23 +9,24 @@ from .schemas import BaseRegenModel, BatchKey, Coin
 
 class SellOrder(BaseRegenModel):
     """Marketplace sell order model."""
-    
+
     id: str = Field(description="Sell order ID")
     seller: str = Field(description="Seller address")
-    batch_key: BatchKey = Field(description="Credit batch information")
+    batch_denom: str = Field(description="Credit batch denomination")
     quantity: str = Field(description="Quantity for sale")
-    market_id: str = Field(description="Market ID")
-    ask_price: str = Field(description="Ask price per unit")
+    ask_denom: str = Field(description="Payment denomination")
+    ask_amount: str = Field(description="Ask amount in payment denom")
     disable_auto_retire: bool = Field(description="Whether to disable auto-retire")
     expiration: Optional[datetime] = Field(default=None, description="Order expiration")
+    market_id: Optional[str] = Field(default=None, description="Market ID (if available)")
 
 
 class AllowedDenom(BaseRegenModel):
     """Allowed denomination in marketplace."""
-    
-    denom: str = Field(description="Token denomination")
-    display_denom: Optional[str] = Field(default=None, description="Display name")
-    exponent: Optional[int] = Field(default=None, description="Decimal exponent")
+
+    bank_denom: str = Field(description="Bank denomination")
+    display_denom: str = Field(description="Display name for denomination")
+    exponent: int = Field(description="Decimal exponent")
 
 
 class BuyOrder(BaseRegenModel):

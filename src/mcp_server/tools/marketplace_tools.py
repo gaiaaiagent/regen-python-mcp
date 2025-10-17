@@ -3,8 +3,7 @@
 import logging
 from typing import Dict, Any, Union
 
-from ..client.regen_client import get_regen_client
-from ..models.schemas import PaginationRequest as Pagination
+from ..client.regen_client import get_regen_client, Pagination
 from ..models.marketplace import (
     SellOrder,
     AllowedDenom,
@@ -42,14 +41,13 @@ async def get_sell_order(sell_order_id: Union[str, int]) -> Dict[str, Any]:
         sell_order_data = response.get("sell_order")
         if sell_order_data:
             sell_order = SellOrder(
-                id=sell_order_data["id"],
-                seller=sell_order_data["seller"],
-                batch_key=sell_order_data["batch_key"],
+                id=sell_order_data.get("id", ""),
+                seller=sell_order_data.get("seller", ""),
                 batch_denom=sell_order_data.get("batch_denom", ""),
-                quantity=sell_order_data["quantity"],
-                ask_denom=sell_order_data["ask_denom"],
-                ask_amount=sell_order_data["ask_amount"],
-                disable_auto_retire=sell_order_data["disable_auto_retire"],
+                quantity=sell_order_data.get("quantity", "0"),
+                ask_denom=sell_order_data.get("ask_denom", ""),
+                ask_amount=sell_order_data.get("ask_amount", "0"),
+                disable_auto_retire=sell_order_data.get("disable_auto_retire", False),
                 expiration=sell_order_data.get("expiration"),
                 market_id=sell_order_data.get("market_id")
             )
@@ -109,14 +107,13 @@ async def list_sell_orders(
         sell_orders = []
         for order_data in response.get("sell_orders", []):
             sell_order = SellOrder(
-                id=order_data["id"],
-                seller=order_data["seller"],
-                batch_key=order_data["batch_key"],
+                id=order_data.get("id", ""),
+                seller=order_data.get("seller", ""),
                 batch_denom=order_data.get("batch_denom", ""),
-                quantity=order_data["quantity"],
-                ask_denom=order_data["ask_denom"],
-                ask_amount=order_data["ask_amount"],
-                disable_auto_retire=order_data["disable_auto_retire"],
+                quantity=order_data.get("quantity", "0"),
+                ask_denom=order_data.get("ask_denom", ""),
+                ask_amount=order_data.get("ask_amount", "0"),
+                disable_auto_retire=order_data.get("disable_auto_retire", False),
                 expiration=order_data.get("expiration"),
                 market_id=order_data.get("market_id")
             )
@@ -124,10 +121,10 @@ async def list_sell_orders(
         
         # Parse pagination
         pagination_response = client._parse_pagination_response(response)
-        
+
         result = SellOrdersResponse(
             sell_orders=sell_orders,
-            pagination=pagination_response
+            pagination=pagination_response.dict() if pagination_response else None
         )
         return result.dict()
         
@@ -201,10 +198,10 @@ async def list_sell_orders_by_batch(
         
         # Parse pagination
         pagination_response = client._parse_pagination_response(response)
-        
+
         result = SellOrdersResponse(
             sell_orders=sell_orders,
-            pagination=pagination_response
+            pagination=pagination_response.dict() if pagination_response else None
         )
         return result.dict()
         
@@ -263,14 +260,13 @@ async def list_sell_orders_by_seller(
         sell_orders = []
         for order_data in response.get("sell_orders", []):
             sell_order = SellOrder(
-                id=order_data["id"],
-                seller=order_data["seller"],
-                batch_key=order_data["batch_key"],
+                id=order_data.get("id", ""),
+                seller=order_data.get("seller", ""),
                 batch_denom=order_data.get("batch_denom", ""),
-                quantity=order_data["quantity"],
-                ask_denom=order_data["ask_denom"],
-                ask_amount=order_data["ask_amount"],
-                disable_auto_retire=order_data["disable_auto_retire"],
+                quantity=order_data.get("quantity", "0"),
+                ask_denom=order_data.get("ask_denom", ""),
+                ask_amount=order_data.get("ask_amount", "0"),
+                disable_auto_retire=order_data.get("disable_auto_retire", False),
                 expiration=order_data.get("expiration"),
                 market_id=order_data.get("market_id")
             )
@@ -278,10 +274,10 @@ async def list_sell_orders_by_seller(
         
         # Parse pagination
         pagination_response = client._parse_pagination_response(response)
-        
+
         result = SellOrdersResponse(
             sell_orders=sell_orders,
-            pagination=pagination_response
+            pagination=pagination_response.dict() if pagination_response else None
         )
         return result.dict()
         
@@ -337,18 +333,18 @@ async def list_allowed_denoms(
         allowed_denoms = []
         for denom_data in response.get("allowed_denoms", []):
             allowed_denom = AllowedDenom(
-                bank_denom=denom_data["bank_denom"],
-                display_denom=denom_data["display_denom"],
-                exponent=int(denom_data["exponent"])
+                bank_denom=denom_data.get("bank_denom", ""),
+                display_denom=denom_data.get("display_denom", ""),
+                exponent=int(denom_data.get("exponent", 0))
             )
             allowed_denoms.append(allowed_denom)
         
         # Parse pagination
         pagination_response = client._parse_pagination_response(response)
-        
+
         result = AllowedDenomsResponse(
             allowed_denoms=allowed_denoms,
-            pagination=pagination_response
+            pagination=pagination_response.dict() if pagination_response else None
         )
         return result.dict()
         

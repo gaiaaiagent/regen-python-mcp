@@ -3,8 +3,7 @@
 import logging
 from typing import Dict, Any
 
-from ..client.regen_client import get_regen_client
-from ..models.schemas import PaginationRequest as Pagination
+from ..client.regen_client import get_regen_client, Pagination
 from ..models.credit import (
     CreditType, 
     CreditClass, 

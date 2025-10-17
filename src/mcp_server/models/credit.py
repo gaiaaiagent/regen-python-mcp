@@ -8,13 +8,12 @@ from .schemas import BaseRegenModel, CreditType, Location, BatchInfo
 
 
 class CreditClass(BaseRegenModel):
-    """Credit class model."""
-    
-    key: str = Field(description="Class key")
+    """Credit class model matching actual API response."""
+
     id: str = Field(description="Class ID")
     admin: str = Field(description="Class administrator address")
     metadata: str = Field(description="Class metadata")
-    credit_type: CreditType = Field(description="Credit type information")
+    credit_type_abbrev: str = Field(description="Credit type abbreviation")
 
 
 class Project(BaseRegenModel):

@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "regen-network": {
+      "command": "/path/to/uv",
+      "args": [
+        "run",
+        "--directory",
+        "/path/to/regen-python-mcp",
+        "python",
+        "main.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/path/to/regen-python-mcp/src",
+        "REGEN_MCP_LOG_LEVEL": "INFO"
+      }
+    }
+  },
+  "_comment": "Alternative configurations below",
+  "_alternatives": {
+    "with_direct_python": {
+      "command": "/usr/bin/python3",
+      "args": [
+        "/path/to/regen-python-mcp/main.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/path/to/regen-python-mcp/src"
+      }
+    },
+    "with_virtual_env": {
+      "command": "/path/to/regen-python-mcp/venv/bin/python",
+      "args": [
+        "/path/to/regen-python-mcp/main.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/path/to/regen-python-mcp/src"
+      }
+    }
+  }
+}
