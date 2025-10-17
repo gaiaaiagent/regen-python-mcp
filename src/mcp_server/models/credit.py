@@ -17,28 +17,26 @@ class CreditClass(BaseRegenModel):
 
 
 class Project(BaseRegenModel):
-    """Ecological project model."""
-    
-    key: str = Field(description="Project key")
+    """Ecological project model matching actual API response."""
+
     id: str = Field(description="Project ID")
     admin: str = Field(description="Project administrator address")
-    class_key: str = Field(description="Associated class key")
+    class_id: str = Field(description="Associated credit class ID")
     jurisdiction: str = Field(description="Jurisdiction code")
     metadata: str = Field(description="Project metadata")
-    reference_id: Optional[str] = Field(default=None, description="Reference ID")
+    reference_id: Optional[str] = Field(default="", description="Reference ID")
 
 
 class CreditBatch(BaseRegenModel):
-    """Credit batch model."""
-    
-    key: str = Field(description="Batch key")
+    """Credit batch model matching actual API response."""
+
     issuer: str = Field(description="Batch issuer address")
-    project_key: str = Field(description="Associated project key")
+    project_id: str = Field(description="Associated project ID")
     denom: str = Field(description="Batch denomination")
     metadata: str = Field(description="Batch metadata")
-    start_date: Optional[datetime] = Field(default=None, description="Monitoring start date")
-    end_date: Optional[datetime] = Field(default=None, description="Monitoring end date")
-    issuance_date: datetime = Field(description="Issuance date")
+    start_date: Optional[str] = Field(default=None, description="Monitoring start date")
+    end_date: Optional[str] = Field(default=None, description="Monitoring end date")
+    issuance_date: Optional[str] = Field(default=None, description="Issuance date")
     open: bool = Field(description="Whether batch is open for additional issuance")
 
 

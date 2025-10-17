@@ -36,10 +36,10 @@ async def list_credit_types() -> Dict[str, Any]:
         credit_types = []
         for ct_data in response.get("credit_types", []):
             credit_type = CreditType(
-                abbreviation=ct_data["abbreviation"],
-                name=ct_data["name"],
-                unit=ct_data["unit"],
-                precision=int(ct_data["precision"])
+                abbreviation=ct_data.get("abbreviation", ""),
+                name=ct_data.get("name", ""),
+                unit=ct_data.get("unit", ""),
+                precision=int(ct_data.get("precision", 0))
             )
             credit_types.append(credit_type)
         
@@ -102,20 +102,19 @@ async def list_credit_classes(
         classes = []
         for class_data in response.get("classes", []):
             credit_class = CreditClass(
-                key=class_data["key"],
-                id=class_data["id"],
-                admin=class_data["admin"],
-                metadata=class_data["metadata"],
-                credit_type_abbrev=class_data["credit_type_abbrev"]
+                id=class_data.get("id", ""),
+                admin=class_data.get("admin", ""),
+                metadata=class_data.get("metadata", ""),
+                credit_type_abbrev=class_data.get("credit_type_abbrev", "")
             )
             classes.append(credit_class)
-        
+
         # Parse pagination
         pagination_response = client._parse_pagination_response(response)
-        
+
         result = CreditClassesResponse(
             classes=classes,
-            pagination=pagination_response
+            pagination=pagination_response.dict() if pagination_response else None
         )
         return result.dict()
         
@@ -175,22 +174,21 @@ async def list_projects(
         projects = []
         for project_data in response.get("projects", []):
             project = Project(
-                key=project_data["key"],
-                id=project_data["id"],
-                admin=project_data["admin"],
-                class_key=project_data["class_key"],
-                jurisdiction=project_data["jurisdiction"],
-                metadata=project_data["metadata"],
-                reference_id=project_data["reference_id"]
+                id=project_data.get("id", ""),
+                admin=project_data.get("admin", ""),
+                class_id=project_data.get("class_id", ""),
+                jurisdiction=project_data.get("jurisdiction", ""),
+                metadata=project_data.get("metadata", ""),
+                reference_id=project_data.get("reference_id", "")
             )
             projects.append(project)
-        
+
         # Parse pagination
         pagination_response = client._parse_pagination_response(response)
-        
+
         result = ProjectsResponse(
             projects=projects,
-            pagination=pagination_response
+            pagination=pagination_response.dict() if pagination_response else None
         )
         return result.dict()
         
@@ -250,24 +248,23 @@ async def list_credit_batches(
         batches = []
         for batch_data in response.get("batches", []):
             batch = CreditBatch(
-                key=batch_data["key"],
-                issuer=batch_data["issuer"],
-                project_key=batch_data["project_key"],
-                denom=batch_data["denom"],
-                metadata=batch_data["metadata"],
+                issuer=batch_data.get("issuer", ""),
+                project_id=batch_data.get("project_id", ""),
+                denom=batch_data.get("denom", ""),
+                metadata=batch_data.get("metadata", ""),
                 start_date=batch_data.get("start_date"),
                 end_date=batch_data.get("end_date"),
-                issuance_date=batch_data["issuance_date"],
-                open=batch_data["open"]
+                issuance_date=batch_data.get("issuance_date"),
+                open=batch_data.get("open", False)
             )
             batches.append(batch)
-        
+
         # Parse pagination
         pagination_response = client._parse_pagination_response(response)
-        
+
         result = CreditBatchesResponse(
             batches=batches,
-            pagination=pagination_response
+            pagination=pagination_response.dict() if pagination_response else None
         )
         return result.dict()
         
