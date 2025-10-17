@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from ..client.regen_client import get_regen_client
+from ..client.regen_client import get_regen_client, Pagination
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +46,9 @@ async def analyze_portfolio_impact(
         
         client = get_regen_client()
         # Get portfolio balances
+        pagination = Pagination(limit=1000, offset=0)
         balances_response = await client.query_all_balances(
-            address=address, limit=1000, offset=0
+            address=address, pagination=pagination
         )
         balances = balances_response.get("balances", [])
 
@@ -78,13 +79,13 @@ async def analyze_portfolio_impact(
             }
 
         # Get supporting data for analysis
-        batches_response = await client.query_credit_batches(limit=1000, offset=0)
+        batches_response = await client.query_credit_batches(pagination)
         batches = batches_response.get("batches", [])
 
-        classes_response = await client.query_credit_classes(limit=1000, offset=0)
+        classes_response = await client.query_credit_classes(pagination)
         classes = classes_response.get("classes", [])
 
-        projects_response = await client.query_projects(limit=1000, offset=0)
+        projects_response = await client.query_projects(pagination)
         projects = projects_response.get("projects", [])
 
         # Analyze impact by credit type
@@ -374,16 +375,18 @@ async def analyze_market_trends(
     """
     try:
         client = get_regen_client()
+        pagination = Pagination(limit=1000, offset=0)
+
         # Get current market data
-        sell_orders_response = await client.query_sell_orders(limit=1000, offset=0)
+        sell_orders_response = await client.query_sell_orders(pagination)
         sell_orders = sell_orders_response.get("sellOrders", [])
-        
+
         # Get credit classes for categorization
-        classes_response = await client.query_credit_classes(limit=1000, offset=0)
+        classes_response = await client.query_credit_classes(pagination)
         classes = classes_response.get("classes", [])
-        
+
         # Get credit batches for supply analysis
-        batches_response = await client.query_credit_batches(limit=1000, offset=0)
+        batches_response = await client.query_credit_batches(pagination)
         batches = batches_response.get("batches", [])
         
         # Filter by credit types if specified
@@ -595,8 +598,10 @@ async def compare_credit_methodologies(class_ids: List[str]) -> Dict[str, Any]:
             }
         
         client = get_regen_client()
+        pagination = Pagination(limit=1000, offset=0)
+
         # Get credit classes
-        classes_response = await client.query_credit_classes(limit=1000, offset=0)
+        classes_response = await client.query_credit_classes(pagination)
         classes = classes_response.get("classes", [])
         
         # Find requested classes
@@ -619,15 +624,15 @@ async def compare_credit_methodologies(class_ids: List[str]) -> Dict[str, Any]:
             }
         
         # Get supporting data for analysis
-        projects_response = await client.query_projects(limit=1000, offset=0)
+        projects_response = await client.query_projects(pagination)
         projects = projects_response.get("projects", [])
-        
-        batches_response = await client.query_credit_batches(limit=1000, offset=0)
+
+        batches_response = await client.query_credit_batches(pagination)
         batches = batches_response.get("batches", [])
-        
+
         # Get market data for pricing analysis
         try:
-            sell_orders_response = await client.query_sell_orders(limit=1000, offset=0)
+            sell_orders_response = await client.query_sell_orders(pagination)
             sell_orders = sell_orders_response.get("sellOrders", [])
         except Exception as e:
             logger.warning(f"Could not fetch market data: {e}")
