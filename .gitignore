@@ -83,3 +83,5 @@ Desktop.ini
 # Backup files
 *.bak
 *.backup
+
+docs/resources/

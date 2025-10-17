@@ -1,5 +1,12 @@
 {
   "mcpServers": {
+    "regen-koi": {
+      "command": "node",
+      "args": ["/home/ygg/Workspace/sandbox/regen-koi-mcp/dist/index.js"],
+      "env": {
+        "KOI_API_ENDPOINT": "http://202.61.196.119:8301/api/koi"
+      }
+    },
     "regen-network": {
       "command": "/home/ygg/.local/bin/uv",
       "args": [

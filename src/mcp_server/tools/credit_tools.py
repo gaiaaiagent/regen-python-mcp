@@ -60,22 +60,20 @@ async def list_credit_classes(
     limit: int = 100,
     offset: int = 0,
     count_total: bool = True,
-    reverse: bool = False,
-    key: str = None
+    reverse: bool = False
 ) -> Dict[str, Any]:
     """List all credit classes (methodologies) on Regen Network.
-    
+
     Credit classes define specific methodologies for measuring and verifying
     ecological benefits within a credit type (e.g., C01, C02 for different
     carbon methodologies).
-    
+
     Args:
         limit: Maximum number of classes to return (1-1000, default 100)
         offset: Number of classes to skip for pagination (default 0)
         count_total: Whether to return total count (default True)
         reverse: Whether to reverse the order of results (default False)
-        key: Pagination key for next page (optional)
-        
+
     Returns:
         dict: Response containing list of credit classes with their IDs,
               admins, metadata, and associated credit types.
@@ -86,14 +84,13 @@ async def list_credit_classes(
             raise ValueError("Limit must be between 1 and 1000")
         if offset < 0:
             raise ValueError("Offset must be non-negative")
-            
+
         client = get_regen_client()
         pagination = Pagination(
             limit=limit,
             offset=offset,
             count_total=count_total,
-            reverse=reverse,
-            key=key
+            reverse=reverse
         )
         
         response = await client.query_credit_classes(pagination)
@@ -132,22 +129,20 @@ async def list_projects(
     limit: int = 100,
     offset: int = 0,
     count_total: bool = True,
-    reverse: bool = False,
-    key: str = None
+    reverse: bool = False
 ) -> Dict[str, Any]:
     """List all registered projects on Regen Network.
-    
+
     Projects represent specific ecological initiatives that generate credits
     under approved methodologies. Each project is linked to a credit class
     and has geographic and temporal boundaries.
-    
+
     Args:
         limit: Maximum number of projects to return (1-1000, default 100)
         offset: Number of projects to skip for pagination (default 0)
         count_total: Whether to return total count (default True)
         reverse: Whether to reverse the order of results (default False)
-        key: Pagination key for next page (optional)
-        
+
     Returns:
         dict: Response containing list of projects with their IDs, class linkage,
               geographic metadata, and lifecycle state information.
@@ -158,14 +153,13 @@ async def list_projects(
             raise ValueError("Limit must be between 1 and 1000")
         if offset < 0:
             raise ValueError("Offset must be non-negative")
-            
+
         client = get_regen_client()
         pagination = Pagination(
             limit=limit,
             offset=offset,
             count_total=count_total,
-            reverse=reverse,
-            key=key
+            reverse=reverse
         )
         
         response = await client.query_projects(pagination)
@@ -206,22 +200,20 @@ async def list_credit_batches(
     limit: int = 100,
     offset: int = 0,
     count_total: bool = True,
-    reverse: bool = False,
-    key: str = None
+    reverse: bool = False
 ) -> Dict[str, Any]:
     """List all issued credit batches on Regen Network.
-    
+
     Credit batches represent specific issuances of credits from projects.
     Each batch has a unique denomination, vintage period, and operational
     status (open/closed for additional issuance).
-    
+
     Args:
         limit: Maximum number of batches to return (1-1000, default 100)
         offset: Number of batches to skip for pagination (default 0)
         count_total: Whether to return total count (default True)
         reverse: Whether to reverse the order of results (default False)
-        key: Pagination key for next page (optional)
-        
+
     Returns:
         dict: Response containing list of credit batches with their batch denoms,
               project IDs, issuers, status, and vintage information.
@@ -232,14 +224,13 @@ async def list_credit_batches(
             raise ValueError("Limit must be between 1 and 1000")
         if offset < 0:
             raise ValueError("Offset must be non-negative")
-            
+
         client = get_regen_client()
         pagination = Pagination(
             limit=limit,
             offset=offset,
             count_total=count_total,
-            reverse=reverse,
-            key=key
+            reverse=reverse
         )
         
         response = await client.query_credit_batches(pagination)
