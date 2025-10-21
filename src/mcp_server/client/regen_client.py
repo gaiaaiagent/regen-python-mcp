@@ -36,20 +36,22 @@ class ValidationError(RegenClientError):
 
 class Pagination(BaseModel):
     """Pagination parameters for blockchain queries."""
-    
+
     limit: int = Field(default=100, ge=1, le=1000, description="Number of items to return")
     offset: int = Field(default=0, ge=0, description="Number of items to skip")
-    count_total: bool = Field(default=True, description="Whether to return total count")
-    reverse: bool = Field(default=False, description="Whether to reverse the order")
-    
+    count_total: Optional[bool] = Field(default=True, description="Whether to return total count")
+    reverse: Optional[bool] = Field(default=False, description="Whether to reverse the order")
+
     def to_query_params(self) -> Dict[str, str]:
         """Convert pagination to query parameters."""
         params = {
             "pagination.limit": str(self.limit),
             "pagination.offset": str(self.offset),
-            "pagination.count_total": str(self.count_total).lower(),
-            "pagination.reverse": str(self.reverse).lower(),
         }
+        if self.count_total is not None:
+            params["pagination.count_total"] = str(self.count_total).lower()
+        if self.reverse is not None:
+            params["pagination.reverse"] = str(self.reverse).lower()
         return params
 
 
