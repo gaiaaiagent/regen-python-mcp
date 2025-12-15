@@ -93,7 +93,7 @@ All queries access public blockchain data (read-only).
 """,
     version="2.0.0",
     servers=[
-        {"url": "https://aa3c102a1a9abf.lhr.life", "description": "API endpoint"}
+        {"url": "https://regen.gaiaai.xyz/regen-api", "description": "Production API"}
     ],
 )
 
@@ -629,10 +629,10 @@ async def analyze_portfolio_impact(
 
 @app.get("/analytics/trends", summary="Market trends", tags=["Analytics"])
 async def analyze_market_trends(
-    credit_types: Optional[str] = Query(None, description="Comma-separated credit types to analyze"),
+    credit_types: Optional[str] = Query(None, description="Comma-separated credit type codes: C (Carbon), BT (BioTerra), KSH (Kilo-Sheep-Hour), USS (Umbrella Species), MBS (Marine Biodiversity). Example: C,BT"),
     time_period: str = Query("30d", description="Time period: 7d, 30d, 90d, 1y"),
 ):
-    """Analyze market trends across credit types."""
+    """Analyze market trends across credit types. Call without parameters for all credit types."""
     types_list = credit_types.split(",") if credit_types else None
     result = await analytics_tools.analyze_market_trends(time_period, types_list)
     if "error" in result:
@@ -658,12 +658,17 @@ async def compare_credit_methodologies(request: MethodologyCompareRequest):
 # Main
 # ============================================================================
 
+import os
+
+PORT = int(os.getenv("PORT", 8007))
+HOST = os.getenv("HOST", "0.0.0.0")
+
 if __name__ == "__main__":
     print("=" * 60)
     print("Regen Network API v2 (25 endpoints - Full functionality)")
     print("=" * 60)
-    print("Local:   http://localhost:8006")
-    print("Docs:    http://localhost:8006/docs")
-    print("Schema:  http://localhost:8006/openapi.json")
+    print(f"Local:   http://localhost:{PORT}")
+    print(f"Docs:    http://localhost:{PORT}/docs")
+    print(f"Schema:  http://localhost:{PORT}/openapi.json")
     print("=" * 60)
-    uvicorn.run(app, host="0.0.0.0", port=8006)
+    uvicorn.run(app, host=HOST, port=PORT)

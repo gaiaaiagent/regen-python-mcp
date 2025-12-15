@@ -145,14 +145,14 @@ async def analyze_portfolio_impact(
             for batch in batches:
                 if batch.get("denom") == denom:
                     batch_info = batch
-                    project_id = batch.get("projectId")
-                    
+                    project_id = batch.get("project_id")
+
                     # Find project
                     for project in projects:
                         if project.get("id") == project_id:
                             project_info = project
-                            class_id = project.get("classId")
-                            
+                            class_id = project.get("class_id")
+
                             # Find class
                             for cls in classes:
                                 if cls.get("id") == class_id:
@@ -160,12 +160,12 @@ async def analyze_portfolio_impact(
                                     break
                             break
                     break
-            
+
             if not batch_info or not project_info or not class_info:
                 logger.warning(f"Incomplete data for batch {denom}")
                 continue
-            
-            credit_type = class_info.get("creditTypeAbbrev", "Unknown")
+
+            credit_type = class_info.get("credit_type_abbrev", "Unknown")
             jurisdiction = project_info.get("jurisdiction", "Unknown")
             methodology = class_info.get("metadata", "")[:50]
             
@@ -176,9 +176,9 @@ async def analyze_portfolio_impact(
             
             # Vintage analysis
             start_year = None
-            if batch_info.get("startDate"):
+            if batch_info.get("start_date"):
                 try:
-                    start_year = int(batch_info.get("startDate")[:4])
+                    start_year = int(batch_info.get("start_date")[:4])
                     composition["vintage_distribution"][start_year] = composition["vintage_distribution"].get(start_year, 0) + amount
                 except (ValueError, TypeError):
                     pass
@@ -379,7 +379,7 @@ async def analyze_market_trends(
 
         # Get current market data
         sell_orders_response = await client.query_sell_orders(pagination)
-        sell_orders = sell_orders_response.get("sellOrders", [])
+        sell_orders = sell_orders_response.get("sell_orders", [])
 
         # Get credit classes for categorization
         classes_response = await client.query_credit_classes(pagination)
@@ -388,7 +388,10 @@ async def analyze_market_trends(
         # Get credit batches for supply analysis
         batches_response = await client.query_credit_batches(pagination)
         batches = batches_response.get("batches", [])
-        
+
+        # Get projects for proper credit type lookup
+        projects_response = await client.query_projects(pagination)
+
         # Filter by credit types if specified
         if credit_types:
             credit_types = [ct.upper() for ct in credit_types]
@@ -406,24 +409,25 @@ async def analyze_market_trends(
             }
         }
         
+        # Build lookup maps for efficient querying
+        batch_to_project = {b.get("denom"): b.get("project_id") for b in batches}
+        project_to_class = {p.get("id"): p.get("class_id") for p in projects_response.get("projects", [])}
+        class_to_type = {c.get("id"): c.get("credit_type_abbrev", "Unknown") for c in classes}
+
         # Process each sell order
         for order in sell_orders:
-            batch_denom = order.get("batchDenom", "")
+            batch_denom = order.get("batch_denom", "")
             quantity = float(order.get("quantity", 0))
-            ask_amount = float(order.get("askAmount", 0))
+            ask_amount = float(order.get("ask_amount", 0))
             price_per_unit = ask_amount / max(1, quantity)
-            
-            # Find credit type
+
+            # Find credit type through proper chain: batch -> project -> class -> type
             credit_type = "Unknown"
-            for batch in batches:
-                if batch.get("denom") == batch_denom:
-                    project_id = batch.get("projectId")
-                    # Find class (simplified - would need project lookup)
-                    for cls in classes:
-                        if cls.get("id", "").startswith("C"):  # Simplified heuristic
-                            credit_type = cls.get("creditTypeAbbrev", "Unknown")
-                            break
-                    break
+            project_id = batch_to_project.get(batch_denom)
+            if project_id:
+                class_id = project_to_class.get(project_id)
+                if class_id:
+                    credit_type = class_to_type.get(class_id, "Unknown")
             
             # Apply filter if specified
             if credit_types and credit_type not in credit_types:
@@ -633,47 +637,47 @@ async def compare_credit_methodologies(class_ids: List[str]) -> Dict[str, Any]:
         # Get market data for pricing analysis
         try:
             sell_orders_response = await client.query_sell_orders(pagination)
-            sell_orders = sell_orders_response.get("sellOrders", [])
+            sell_orders = sell_orders_response.get("sell_orders", [])
         except Exception as e:
             logger.warning(f"Could not fetch market data: {e}")
             sell_orders = []
-        
+
         # Analyze each class
         class_analyses = {}
-        
+
         for cls in comparison_classes:
             class_id = cls.get("id")
-            
+
             # Find projects for this class
-            class_projects = [p for p in projects if p.get("classId") == class_id]
-            
+            class_projects = [p for p in projects if p.get("class_id") == class_id]
+
             # Find batches for this class
             class_project_ids = [p.get("id") for p in class_projects]
             class_batches = [
-                b for b in batches 
-                if b.get("projectId") in class_project_ids
+                b for b in batches
+                if b.get("project_id") in class_project_ids
             ]
-            
+
             # Find market orders for this class batches
             class_batch_denoms = [b.get("denom") for b in class_batches]
             class_orders = [
                 order for order in sell_orders
-                if order.get("batchDenom") in class_batch_denoms
+                if order.get("batch_denom") in class_batch_denoms
             ]
-            
+
             # Calculate supply metrics
-            total_issued = sum(float(b.get("totalAmount", 0)) for b in class_batches)
-            total_tradable = sum(float(b.get("tradableAmount", 0)) for b in class_batches)
-            total_retired = sum(float(b.get("retiredAmount", 0)) for b in class_batches)
-            
+            total_issued = sum(float(b.get("total_amount", 0)) for b in class_batches)
+            total_tradable = sum(float(b.get("tradable_amount", 0)) for b in class_batches)
+            total_retired = sum(float(b.get("retired_amount", 0)) for b in class_batches)
+
             # Calculate market metrics
             market_volume = sum(float(order.get("quantity", 0)) for order in class_orders)
-            market_value = sum(float(order.get("askAmount", 0)) for order in class_orders)
+            market_value = sum(float(order.get("ask_amount", 0)) for order in class_orders)
             avg_price = (market_value / max(1, market_volume)) if market_volume > 0 else 0
             
             # Analyze methodology characteristics
             metadata = cls.get("metadata", "").lower()
-            credit_type = cls.get("creditTypeAbbrev", "Unknown")
+            credit_type = cls.get("credit_type_abbrev", "Unknown")
             
             # Methodology scoring (heuristic-based)
             methodology_scores = {
