@@ -265,14 +265,18 @@ async def get_basket_details(
     response = {"basket": basket_result}
 
     if include_balances:
-        if batch:
-            balance_result = await basket_tools.get_basket_balance(denom, batch)
-            if "error" not in balance_result:
-                response["batch_balance"] = balance_result
-        else:
-            balances_result = await basket_tools.list_basket_balances(denom, limit, offset)
-            if "error" not in balances_result:
-                response["balances"] = balances_result
+        try:
+            if batch:
+                balance_result = await basket_tools.get_basket_balance(denom, batch)
+                if "error" not in balance_result:
+                    response["batch_balance"] = balance_result
+            else:
+                balances_result = await basket_tools.list_basket_balances(denom, limit, offset)
+                if "error" not in balances_result:
+                    response["balances"] = balances_result
+        except Exception as e:
+            # Basket balances may not be supported by all RPC endpoints
+            response["balances_error"] = f"Balance query not supported: {str(e)}"
 
     return response
 
@@ -492,24 +496,33 @@ async def get_governance_params(
     - ?type=tally: Quorum, threshold, veto threshold
     """
     if type and type != GovParamsType.all:
+        # Note: "tally" endpoint doesn't work on cosmos gov v1beta1, extract from voting
+        if type.value == "tally":
+            result = await governance_tools.get_governance_params("voting")
+            if "error" in result:
+                raise HTTPException(status_code=400, detail=result["error"])
+            # Extract tally_params from voting response
+            return {"tally_params": result.get("tally_params")}
         result = await governance_tools.get_governance_params(type.value)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         return result
     else:
-        # Get all params in parallel
-        voting_task = governance_tools.get_governance_params("voting")
-        deposit_task = governance_tools.get_governance_params("deposit")
-        tally_task = governance_tools.get_governance_params("tally")
+        # Get all params (voting and deposit both include all params)
+        async def safe_fetch(query_type: str):
+            try:
+                return await governance_tools.get_governance_params(query_type)
+            except Exception:
+                return None
 
-        voting, deposit, tally = await asyncio.gather(
-            voting_task, deposit_task, tally_task
+        voting, deposit = await asyncio.gather(
+            safe_fetch("voting"), safe_fetch("deposit")
         )
 
         return {
-            "voting": voting if "error" not in voting else None,
-            "deposit": deposit if "error" not in deposit else None,
-            "tally": tally if "error" not in tally else None,
+            "voting": voting,
+            "deposit": deposit,
+            "tally": {"tally_params": voting.get("tally_params")} if voting else None,
         }
 
 
@@ -621,7 +634,7 @@ async def analyze_market_trends(
 ):
     """Analyze market trends across credit types."""
     types_list = credit_types.split(",") if credit_types else None
-    result = await analytics_tools.analyze_market_trends(types_list, time_period)
+    result = await analytics_tools.analyze_market_trends(time_period, types_list)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result

@@ -277,7 +277,7 @@ class RegenClient:
         
         try:
             response = await self._make_request(
-                "/regen/ecocredit/v1/baskets",
+                "/regen/ecocredit/basket/v1/baskets",
                 endpoint_type="rest",
                 params=params
             )
@@ -297,7 +297,7 @@ class RegenClient:
         """
         try:
             response = await self._make_request(
-                f"/regen/ecocredit/v1/basket/{basket_denom}",
+                f"/regen/ecocredit/basket/v1/basket/{basket_denom}",
                 endpoint_type="rest"
             )
             return response
@@ -538,7 +538,7 @@ class RegenClient:
         
         try:
             response = await self._make_request(
-                f"/regen/ecocredit/v1/basket/{basket_denom}/balances",
+                f"/regen/ecocredit/basket/v1/basket/{basket_denom}/balances",
                 endpoint_type="rest",
                 params=params
             )
@@ -563,7 +563,7 @@ class RegenClient:
         """
         try:
             response = await self._make_request(
-                f"/regen/ecocredit/v1/basket/{basket_denom}/balance/{batch_denom}",
+                f"/regen/ecocredit/basket/v1/basket/{basket_denom}/balance/{batch_denom}",
                 endpoint_type="rest"
             )
             return response
@@ -579,7 +579,7 @@ class RegenClient:
         """
         try:
             response = await self._make_request(
-                "/regen/ecocredit/v1/basket-fee",
+                "/regen/ecocredit/basket/v1/basket-fee",
                 endpoint_type="rest"
             )
             return response
@@ -599,8 +599,9 @@ class RegenClient:
         """
         try:
             response = await self._make_request(
-                f"/cosmos/bank/v1beta1/balances/{address}/{denom}",
-                endpoint_type="rest"
+                f"/cosmos/bank/v1beta1/balances/{address}/by_denom",
+                endpoint_type="rest",
+                params={"denom": denom}
             )
             return response
         except Exception as e:
