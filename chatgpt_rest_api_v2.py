@@ -17,6 +17,7 @@ Key consolidations:
 import sys
 import asyncio
 import logging
+import json
 from pathlib import Path
 from typing import Optional, List
 from enum import Enum
@@ -130,6 +131,117 @@ async def api_info():
     }
 
 
+@app.get("/unified-openapi.json", summary="Combined OpenAPI Schema", tags=["Info"], include_in_schema=False)
+async def get_combined_openapi():
+    """Get combined OpenAPI schema for both Ledger API and KOI Knowledge API.
+
+    Use this schema when you need a single ChatGPT Action that can access both:
+    - Regen Ledger API (/regen-api/*) - blockchain data
+    - KOI Knowledge API (/api/koi/*) - semantic search
+    """
+    schema_path = Path(__file__).parent / "openapi-combined.json"
+    if not schema_path.exists():
+        raise HTTPException(status_code=404, detail="Combined schema not found")
+
+    with open(schema_path) as f:
+        return json.load(f)
+
+
+@app.get("/summary", summary="API capabilities summary", tags=["Discovery"])
+async def get_api_summary():
+    """Get a complete summary of all API capabilities.
+
+    CALL THIS FIRST to understand what information is available.
+    Returns organized list of all endpoints grouped by function.
+    """
+    return {
+        "name": "Regen Network Unified API",
+        "description": "Query Regen Network blockchain data AND search 6,500+ documents about regenerative agriculture",
+        "tip": "For questions about concepts, history, or 'what is X', use Knowledge Search. For live blockchain data, use Ledger endpoints. For 'this week', 'past week', or 'recent news', use Weekly Digest.",
+        "capabilities": {
+            "weekly_digest": {
+                "description": "Curated weekly summary of Regen Network ecosystem activity",
+                "when_to_use": "ALWAYS use for: 'this week', 'past week', 'this past week', 'recent news', 'recent activity', 'what's happening', 'summarize the week', 'weekly update', any time-based summary",
+                "endpoints": {
+                    "GET /api/koi/weekly-digest": "Weekly summary - USE THIS for any 'week' or 'recent' questions"
+                }
+            },
+            "knowledge_search": {
+                "description": "Search 6,500+ documents about Regen Network, regenerative agriculture, carbon credits, and ecological finance",
+                "when_to_use": "Questions about concepts, explanations, history, 'what is', 'how does', background information",
+                "endpoints": {
+                    "POST /api/koi/query": "Semantic search - ask any question in natural language",
+                    "GET /api/koi/stats": "Knowledge base statistics"
+                }
+            },
+            "ecological_credits": {
+                "description": "Query live blockchain data about carbon credits, biodiversity credits, and ecological assets",
+                "when_to_use": "Questions about current credit types, classes, projects, batches, prices, supply",
+                "endpoints": {
+                    "GET /regen-api/ecocredits/types": "List all credit types (Carbon, Biodiversity, etc.)",
+                    "GET /regen-api/ecocredits/classes": "List credit classes (methodologies)",
+                    "GET /regen-api/ecocredits/projects": "List registered ecological projects",
+                    "GET /regen-api/ecocredits/batches": "List issued credit batches with supply info"
+                }
+            },
+            "marketplace": {
+                "description": "Query carbon credit marketplace - sell orders, prices, trading",
+                "when_to_use": "Questions about buying credits, current prices, sell orders, market activity",
+                "endpoints": {
+                    "GET /regen-api/marketplace/orders": "Query sell orders (filter by id, batch, seller)",
+                    "GET /regen-api/marketplace/denoms": "Accepted payment tokens"
+                }
+            },
+            "baskets": {
+                "description": "Query basket tokens - pooled ecological credits",
+                "when_to_use": "Questions about NCT, basket tokens, pooled credits",
+                "endpoints": {
+                    "GET /regen-api/baskets": "List all basket tokens",
+                    "GET /regen-api/baskets/{denom}": "Get basket details and contents",
+                    "GET /regen-api/baskets/fee": "Basket creation fee"
+                }
+            },
+            "accounts_and_balances": {
+                "description": "Query Regen accounts, token balances, and supply",
+                "when_to_use": "Questions about specific addresses, holdings, token supply",
+                "endpoints": {
+                    "GET /regen-api/bank/balances/{address}": "Get account token balances",
+                    "GET /regen-api/bank/accounts": "Query accounts",
+                    "GET /regen-api/bank/supply": "Total token supply",
+                    "GET /regen-api/bank/metadata": "Token metadata"
+                }
+            },
+            "staking_and_rewards": {
+                "description": "Query staking rewards, validators, delegations",
+                "when_to_use": "Questions about staking, validators, rewards, delegations",
+                "endpoints": {
+                    "GET /regen-api/distribution/pool": "Community pool balance",
+                    "GET /regen-api/distribution/validator/{address}": "Validator rewards and commission",
+                    "GET /regen-api/distribution/delegator/{address}": "Delegator staking rewards"
+                }
+            },
+            "governance": {
+                "description": "Query governance proposals, voting, community decisions",
+                "when_to_use": "Questions about proposals, voting, governance decisions",
+                "endpoints": {
+                    "GET /regen-api/governance/proposals": "List/filter proposals",
+                    "GET /regen-api/governance/proposal/{id}/full": "Full proposal with votes and deposits",
+                    "GET /regen-api/governance/params": "Governance parameters"
+                }
+            },
+            "analytics": {
+                "description": "Analyze portfolios, market trends, and compare methodologies",
+                "when_to_use": "Questions about trends, portfolio analysis, methodology comparison",
+                "endpoints": {
+                    "GET /regen-api/analytics/trends": "Market trends by credit type",
+                    "GET /regen-api/analytics/portfolio/{address}": "Portfolio ecological impact",
+                    "POST /regen-api/analytics/compare": "Compare credit methodologies"
+                }
+            }
+        }
+    }
+
+
 # ============================================================================
 # ECOCREDITS (4 endpoints) - Unchanged
 # ============================================================================
@@ -200,11 +312,11 @@ async def query_marketplace_orders(
     if id is not None:
         result = await marketplace_tools.get_sell_order(id)
     elif batch is not None:
-        result = await marketplace_tools.list_sell_orders_by_batch(batch, page, limit)
+        result = await marketplace_tools.list_sell_orders_by_batch(batch, limit=limit, offset=(page-1)*limit)
     elif seller is not None:
-        result = await marketplace_tools.list_sell_orders_by_seller(seller, page, limit)
+        result = await marketplace_tools.list_sell_orders_by_seller(seller, limit=limit, offset=(page-1)*limit)
     else:
-        result = await marketplace_tools.list_sell_orders(page, limit)
+        result = await marketplace_tools.list_sell_orders(limit=limit, offset=(page-1)*limit)
 
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
