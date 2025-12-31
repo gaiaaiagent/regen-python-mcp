@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Regen Network Full API",
-    "description": "Unified API for Regen Network combining blockchain ledger data and knowledge base search.\n\n## Two API Modules\n\n### 1. Ledger API (`/regen-api/*`)\nQuery Regen Network blockchain for ecological credits, carbon markets, governance, and staking.\n- **Ecocredits** (4): Credit types, classes, projects, batches\n- **Marketplace** (2): Sell orders, allowed denoms\n- **Baskets** (3): Basket tokens with balances\n- **Bank** (5): Accounts, balances, supply, metadata, params\n- **Distribution** (4): Staking rewards, validator/delegator info\n- **Governance** (4): Proposals, voting, params, community pool\n- **Analytics** (3): Portfolio analysis, market trends, methodology comparison\n\n### 2. Knowledge API (`/api/koi/*`)\nSemantic search across 6,500+ documents about regenerative agriculture, Regen Network, and ecological credits.\n- **Search**: Hybrid semantic search with RRF ranking\n- **Stats**: Knowledge base statistics\n- **Weekly Digest**: Curated weekly summaries\n\nAll queries are read-only. (Full schema including dev/ops endpoints)",
+    "title": "Regen Network API (Full)",
+    "description": "Full API for Regen Network (dev/MCP). Includes all endpoints including dev/ops tools.\n\nUnified API for Regen Network combining blockchain ledger data and knowledge base search.\n\n## Two API Modules\n\n### 1. Ledger API (`/regen-api/*`)\nQuery Regen Network blockchain for ecological credits, carbon markets, governance, and staking.\n- **Ecocredits** (4): Credit types, classes, projects, batches\n- **Marketplace** (2): Sell orders, allowed denoms\n- **Baskets** (3): Basket tokens with balances\n- **Bank** (5): Accounts, balances, supply, metadata, params\n- **Distribution** (4): Staking rewards, validator/delegator info\n- **Governance** (4): Proposals, voting, params, community pool\n- **Analytics** (3): Portfolio analysis, market trends, methodology comparison\n\n### 2. Knowledge API (`/api/koi/*`)\nSemantic search across 6,500+ documents about regenerative agriculture, Regen Network, and ecological credits.\n- **Search**: Hybrid semantic search with RRF ranking\n- **Stats**: Knowledge base statistics\n- **Weekly Digest**: Curated weekly summaries\n\nAll queries are read-only.",
     "version": "3.0.0"
   },
   "servers": [
@@ -1418,6 +1418,102 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/koi/entity": {
+      "post": {
+        "tags": [
+          "Knowledge - Entity"
+        ],
+        "summary": "Entity relationship queries",
+        "description": "Query entity relationships in the knowledge graph. Use query_type to select the operation:\n- **resolve**: Resolve an ambiguous label to canonical entity URIs with confidence scores\n- **neighborhood**: Get the graph neighborhood of an entity (direct relationships and connected entities)\n- **documents**: Get documents associated with an entity\n\nFor resolve/neighborhood/documents, provide either 'label' (will be resolved) or 'uri' (if known from previous resolve).",
+        "operationId": "koi_entity_query",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query_type"
+                ],
+                "properties": {
+                  "query_type": {
+                    "type": "string",
+                    "enum": [
+                      "resolve",
+                      "neighborhood",
+                      "documents"
+                    ],
+                    "description": "Type of entity query to perform"
+                  },
+                  "label": {
+                    "type": "string",
+                    "description": "Entity label to look up (e.g., 'ethereum', 'regen commons')"
+                  },
+                  "uri": {
+                    "type": "string",
+                    "description": "Entity URI (preferred if known from previous resolve)"
+                  },
+                  "type_hint": {
+                    "type": "string",
+                    "description": "Optional type hint for disambiguation (e.g., 'TECHNOLOGY', 'ORGANIZATION')"
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "out",
+                      "in",
+                      "both"
+                    ],
+                    "default": "both",
+                    "description": "Edge direction for neighborhood query"
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 20,
+                    "description": "Maximum results to return"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Entity query results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "query_type": {
+                      "type": "string"
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      },
+                      "description": "Query results (structure depends on query_type)"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
               }
             }
           }

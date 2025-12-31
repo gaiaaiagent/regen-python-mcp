@@ -171,7 +171,7 @@ async def get_api_summary():
                 "when_to_use": "Questions about concepts, explanations, history, 'what is', 'how does', background information",
                 "endpoints": {
                     "POST /api/koi/query": "Semantic search - ask any question in natural language",
-                    "GET /api/koi/stats": "Knowledge base statistics"
+                    "POST /api/koi/entity": "Entity queries - resolve entity names, get relationships, find related documents (use query_type: resolve|neighborhood|documents)"
                 }
             },
             "ecological_credits": {
