@@ -117,7 +117,7 @@
           "Ledger - Ecocredits"
         ],
         "summary": "List projects",
-        "description": "List ecological projects registered on Regen that generate credits.",
+        "description": "List ecological projects registered on Regen that generate credits. When include_offchain_metrics=true, projects with Regen metadata IRIs will be enriched with hectares derived from off-chain metadata. Enforces 'no citation, no metric' - hectares only appear with full provenance.",
         "operationId": "list_projects",
         "parameters": [
           {
@@ -142,6 +142,16 @@
               "default": 0
             },
             "description": "Number of results to skip"
+          },
+          {
+            "name": "include_offchain_metrics",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Enrich projects with off-chain hectares from metadata IRIs. Enforces 'no citation, no metric' policy."
           }
         ],
         "responses": {
