@@ -145,6 +145,8 @@ async def transient_error_handler(request: Request, exc: TransientError):
         details=exc.details,
         warnings=["This is a transient error. Please retry after the suggested delay."]
     )
+    # Keep error responses consistent with the standard envelope fields used for metrics.
+    error_response["data_source"] = DataSource.ON_CHAIN
 
     response = JSONResponse(
         status_code=503,
@@ -171,6 +173,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         retryable=retryable,
         retry_after_ms=5000 if retryable else None,
     )
+    # Keep error responses consistent with the standard envelope fields used for metrics.
+    error_response["data_source"] = DataSource.ON_CHAIN
 
     response = JSONResponse(
         status_code=exc.status_code,
