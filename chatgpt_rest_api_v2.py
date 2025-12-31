@@ -228,7 +228,7 @@ async def get_api_summary():
     CALL THIS FIRST to understand what information is available.
     Returns organized list of all endpoints grouped by function.
     """
-    return {
+    summary = {
         "name": "Regen Network Unified API",
         "description": "Query Regen Network blockchain data AND search 6,500+ documents about regenerative agriculture",
         "tip": "For questions about concepts, history, or 'what is X', use Knowledge Search. For live blockchain data, use Ledger endpoints. For 'this week', 'past week', or 'recent news', use Weekly Digest.",
@@ -314,6 +314,20 @@ async def get_api_summary():
             }
         }
     }
+
+    add_tool_trace(create_tool_trace(
+        tool="get_api_summary",
+        params={},
+        data_source=DataSource.CACHED,
+        duration_ms=0,
+        allowlisted_params=[],
+    ))
+
+    return create_envelope(
+        data=summary,
+        request_id=get_request_id(),
+        data_source=DataSource.CACHED,
+    )
 
 
 # ============================================================================
