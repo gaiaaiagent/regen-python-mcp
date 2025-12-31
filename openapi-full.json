@@ -1,0 +1,1428 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Regen Network Full API",
+    "description": "Unified API for Regen Network combining blockchain ledger data and knowledge base search.\n\n## Two API Modules\n\n### 1. Ledger API (`/regen-api/*`)\nQuery Regen Network blockchain for ecological credits, carbon markets, governance, and staking.\n- **Ecocredits** (4): Credit types, classes, projects, batches\n- **Marketplace** (2): Sell orders, allowed denoms\n- **Baskets** (3): Basket tokens with balances\n- **Bank** (5): Accounts, balances, supply, metadata, params\n- **Distribution** (4): Staking rewards, validator/delegator info\n- **Governance** (4): Proposals, voting, params, community pool\n- **Analytics** (3): Portfolio analysis, market trends, methodology comparison\n\n### 2. Knowledge API (`/api/koi/*`)\nSemantic search across 6,500+ documents about regenerative agriculture, Regen Network, and ecological credits.\n- **Search**: Hybrid semantic search with RRF ranking\n- **Stats**: Knowledge base statistics\n- **Weekly Digest**: Curated weekly summaries\n\nAll queries are read-only. (Full schema including dev/ops endpoints)",
+    "version": "3.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://regen.gaiaai.xyz",
+      "description": "Production API"
+    }
+  ],
+  "paths": {
+    "/regen-api/summary": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "API capabilities summary",
+        "description": "Get a complete summary of all API capabilities. CALL THIS FIRST to understand what information is available. Returns organized list of all endpoints grouped by function, helping you choose the right endpoint for any question.",
+        "operationId": "get_api_summary",
+        "responses": {
+          "200": {
+            "description": "API capabilities organized by category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "capabilities": {
+                      "type": "object",
+                      "description": "Available API capabilities grouped by category"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/ecocredits/types": {
+      "get": {
+        "tags": [
+          "Ledger - Ecocredits"
+        ],
+        "summary": "List credit types",
+        "description": "List all ecological credit types enabled on Regen (Carbon, Biodiversity, etc.).",
+        "operationId": "list_credit_types",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/ecocredits/classes": {
+      "get": {
+        "tags": [
+          "Ledger - Ecocredits"
+        ],
+        "summary": "List credit classes",
+        "description": "List credit classes (methodologies for measuring ecological benefits).",
+        "operationId": "list_credit_classes",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "description": "Max results to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Number of results to skip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/ecocredits/projects": {
+      "get": {
+        "tags": [
+          "Ledger - Ecocredits"
+        ],
+        "summary": "List projects",
+        "description": "List ecological projects registered on Regen that generate credits.",
+        "operationId": "list_projects",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "description": "Max results to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Number of results to skip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/ecocredits/batches": {
+      "get": {
+        "tags": [
+          "Ledger - Ecocredits"
+        ],
+        "summary": "List credit batches",
+        "description": "List issued credit batches with vintage dates and supply info.",
+        "operationId": "list_credit_batches",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "description": "Max results to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Number of results to skip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/marketplace/orders": {
+      "get": {
+        "tags": [
+          "Ledger - Marketplace"
+        ],
+        "summary": "Query sell orders",
+        "description": "Query marketplace sell orders. Use query params to filter:\n- No params: List all active orders\n- ?id=123: Get specific order by ID\n- ?batch=C01-001-...: Filter orders for a credit batch\n- ?seller=regen1...: Filter orders by seller address",
+        "operationId": "query_marketplace_orders",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Get specific order by ID"
+          },
+          {
+            "name": "batch",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter orders by credit batch denom"
+          },
+          {
+            "name": "seller",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter orders by seller address"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "description": "Results per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/marketplace/denoms": {
+      "get": {
+        "tags": [
+          "Ledger - Marketplace"
+        ],
+        "summary": "Allowed payment tokens",
+        "description": "List token denominations accepted for marketplace payments.",
+        "operationId": "list_allowed_denoms",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/baskets": {
+      "get": {
+        "tags": [
+          "Ledger - Baskets"
+        ],
+        "summary": "List baskets",
+        "description": "List ecocredit baskets (pooled credits represented as fungible tokens).",
+        "operationId": "list_baskets",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "description": "Max results to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Number of results to skip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/baskets/fee": {
+      "get": {
+        "tags": [
+          "Ledger - Baskets"
+        ],
+        "summary": "Basket creation fee",
+        "description": "Get the fee required to create a new ecocredit basket.",
+        "operationId": "get_basket_fee",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/baskets/{denom}": {
+      "get": {
+        "tags": [
+          "Ledger - Baskets"
+        ],
+        "summary": "Get basket details",
+        "description": "Get basket details including criteria and credit type. Use ?include_balances=true to see credit batches in the basket.",
+        "operationId": "get_basket_details",
+        "parameters": [
+          {
+            "name": "denom",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Basket token denomination"
+          },
+          {
+            "name": "include_balances",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Include credit batches held in basket"
+          },
+          {
+            "name": "batch",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Get balance for specific batch only"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "description": "Max balances to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Skip balances"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/bank/accounts": {
+      "get": {
+        "tags": [
+          "Ledger - Bank"
+        ],
+        "summary": "Query accounts",
+        "description": "Query Regen accounts. Options:\n- No params: List all accounts (paginated)\n- ?address=regen1...: Get specific account details",
+        "operationId": "query_bank_accounts",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Get specific account by address"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "description": "Results per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/bank/balances/{address}": {
+      "get": {
+        "tags": [
+          "Ledger - Bank"
+        ],
+        "summary": "Get account balances",
+        "description": "Get token balances for an account. Use ?denom=uregen for specific token, ?spendable=true for only spendable balances.",
+        "operationId": "get_account_balances",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Regen account address"
+          },
+          {
+            "name": "denom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Get balance for specific token only"
+          },
+          {
+            "name": "spendable",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Return only spendable balances"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "description": "Results per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/bank/supply": {
+      "get": {
+        "tags": [
+          "Ledger - Bank"
+        ],
+        "summary": "Query token supply",
+        "description": "Query total token supply. Use ?denom=uregen for specific token supply.",
+        "operationId": "query_token_supply",
+        "parameters": [
+          {
+            "name": "denom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Get supply for specific token"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "description": "Results per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/bank/metadata": {
+      "get": {
+        "tags": [
+          "Ledger - Bank"
+        ],
+        "summary": "Query token metadata",
+        "description": "Query token metadata (name, symbol, decimals). Use ?denom=uregen for specific token.",
+        "operationId": "query_token_metadata",
+        "parameters": [
+          {
+            "name": "denom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Get metadata for specific token"
+          },
+          {
+            "name": "include_owners",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Include list of token holders (requires denom)"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "description": "Results per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/bank/params": {
+      "get": {
+        "tags": [
+          "Ledger - Bank"
+        ],
+        "summary": "Bank module params",
+        "description": "Get bank module parameters (send enabled, default settings).",
+        "operationId": "get_bank_params",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/distribution/params": {
+      "get": {
+        "tags": [
+          "Ledger - Distribution"
+        ],
+        "summary": "Distribution params",
+        "description": "Get distribution module parameters (community tax, base proposer reward, etc.).",
+        "operationId": "get_distribution_params",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/distribution/pool": {
+      "get": {
+        "tags": [
+          "Ledger - Distribution"
+        ],
+        "summary": "Community pool",
+        "description": "Get community pool balance (funds available for governance spending).",
+        "operationId": "get_community_pool",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/distribution/validator/{address}": {
+      "get": {
+        "tags": [
+          "Ledger - Distribution"
+        ],
+        "summary": "Validator distribution info",
+        "description": "Get validator distribution info: outstanding rewards, commission, and slashing events.",
+        "operationId": "get_validator_distribution",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Validator operator address (regenvaloper1...)"
+          },
+          {
+            "name": "starting_height",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Start block for slashes"
+          },
+          {
+            "name": "ending_height",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "End block for slashes"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page for slashes"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "description": "Limit for slashes"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/distribution/delegator/{address}": {
+      "get": {
+        "tags": [
+          "Ledger - Distribution"
+        ],
+        "summary": "Delegator distribution info",
+        "description": "Get delegator staking rewards info. Use ?validator=regenvaloper1... for rewards from specific validator.",
+        "operationId": "get_delegator_distribution",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Delegator account address (regen1...)"
+          },
+          {
+            "name": "validator",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Get rewards for specific validator only"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/governance/params": {
+      "get": {
+        "tags": [
+          "Ledger - Governance"
+        ],
+        "summary": "Governance params",
+        "description": "Get governance module parameters. Use ?type=voting|deposit|tally|all for specific params.",
+        "operationId": "get_governance_params",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "voting",
+                "deposit",
+                "tally",
+                "all"
+              ]
+            },
+            "description": "Param type: voting, deposit, tally, or all"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/governance/proposals": {
+      "get": {
+        "tags": [
+          "Ledger - Governance"
+        ],
+        "summary": "Query proposals",
+        "description": "Query governance proposals. Filter with ?id=, ?status=, ?voter=, ?depositor= parameters.",
+        "operationId": "query_governance_proposals",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Get specific proposal by ID"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PROPOSAL_STATUS_UNSPECIFIED",
+                "PROPOSAL_STATUS_DEPOSIT_PERIOD",
+                "PROPOSAL_STATUS_VOTING_PERIOD",
+                "PROPOSAL_STATUS_PASSED",
+                "PROPOSAL_STATUS_REJECTED",
+                "PROPOSAL_STATUS_FAILED"
+              ]
+            },
+            "description": "Filter by status"
+          },
+          {
+            "name": "voter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter proposals this address voted on"
+          },
+          {
+            "name": "depositor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter proposals this address deposited to"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "description": "Results per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/governance/proposal/{id}/full": {
+      "get": {
+        "tags": [
+          "Ledger - Governance"
+        ],
+        "summary": "Full proposal details",
+        "description": "Get comprehensive proposal info including votes, deposits, and tally results.",
+        "operationId": "get_proposal_full_details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Proposal ID"
+          },
+          {
+            "name": "voter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter votes to specific voter"
+          },
+          {
+            "name": "depositor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter deposits to specific depositor"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page for votes/deposits lists"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "description": "Limit for votes/deposits"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/analytics/portfolio/{address}": {
+      "get": {
+        "tags": [
+          "Ledger - Analytics"
+        ],
+        "summary": "Portfolio impact analysis",
+        "description": "Analyze ecological impact of an address's credit holdings.",
+        "operationId": "analyze_portfolio_impact",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Account address to analyze"
+          },
+          {
+            "name": "analysis_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "full"
+            },
+            "description": "Analysis type: full, credits, or summary"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/analytics/trends": {
+      "get": {
+        "tags": [
+          "Ledger - Analytics"
+        ],
+        "summary": "Market trends",
+        "description": "Analyze market trends across credit types. Call without parameters for all credit types.",
+        "operationId": "analyze_market_trends",
+        "parameters": [
+          {
+            "name": "credit_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated credit type codes: C (Carbon), BT (BioTerra), KSH (Kilo-Sheep-Hour), USS (Umbrella Species), MBS (Marine Biodiversity). Example: C,BT"
+          },
+          {
+            "name": "time_period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "30d"
+            },
+            "description": "Time period: 7d, 30d, 90d, 1y"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regen-api/analytics/compare": {
+      "post": {
+        "tags": [
+          "Ledger - Analytics"
+        ],
+        "summary": "Compare methodologies",
+        "description": "Compare different credit class methodologies for impact efficiency.",
+        "operationId": "compare_credit_methodologies",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "class_ids"
+                ],
+                "properties": {
+                  "class_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 2,
+                    "description": "Credit class IDs to compare"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/koi/query": {
+      "post": {
+        "tags": [
+          "Knowledge - Search"
+        ],
+        "summary": "Semantic knowledge search",
+        "description": "Search the Regen Network knowledge base using hybrid semantic search. Returns relevant documents about regenerative agriculture, Regen Network, ecological credits, and related topics. Results include confidence scores and source citations.",
+        "operationId": "koi_semantic_search",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "question"
+                ],
+                "properties": {
+                  "question": {
+                    "type": "string",
+                    "description": "Natural language question or search query"
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50,
+                    "default": 10,
+                    "description": "Maximum number of results to return"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Search results with confidence scores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "question": {
+                      "type": "string"
+                    },
+                    "total_results": {
+                      "type": "integer"
+                    },
+                    "confidence": {
+                      "type": "number"
+                    },
+                    "execution_time": {
+                      "type": "number"
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "content": {
+                            "type": "string"
+                          },
+                          "score": {
+                            "type": "number"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "rid": {
+                            "type": "string"
+                          },
+                          "metadata": {
+                            "type": "object"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/koi/graph": {
+      "post": {
+        "tags": [
+          "Knowledge - Graph"
+        ],
+        "summary": "Query the code knowledge graph",
+        "description": "Query the code knowledge graph for entities (Classes, Functions, Handlers, Keepers, etc.) and their relationships. Supports listing repositories, searching entities, finding module relationships, and traversing call hierarchies.",
+        "operationId": "koi_graph_query",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query_type"
+                ],
+                "properties": {
+                  "query_type": {
+                    "type": "string",
+                    "enum": [
+                      "list_repos",
+                      "list_entity_types",
+                      "get_entity_stats",
+                      "find_by_type",
+                      "search_entities",
+                      "related_entities",
+                      "list_modules",
+                      "get_module",
+                      "keeper_for_msg",
+                      "msgs_for_keeper",
+                      "find_callers",
+                      "find_callees"
+                    ],
+                    "description": "Type of graph query to perform"
+                  },
+                  "entity_name": {
+                    "type": "string",
+                    "description": "Entity name or search term (for search_entities, related_entities)"
+                  },
+                  "entity_type": {
+                    "type": "string",
+                    "description": "Entity type filter (for find_by_type). Examples: Sensor, Handler, Class, Interface, Function, Keeper"
+                  },
+                  "repo_name": {
+                    "type": "string",
+                    "description": "Repository name filter (e.g., koi-sensors, regen-ledger)"
+                  },
+                  "module_name": {
+                    "type": "string",
+                    "description": "Module name (for get_module, keeper_for_msg, msgs_for_keeper)"
+                  }
+                }
+              },
+              "examples": {
+                "list_repos": {
+                  "value": {
+                    "query_type": "list_repos"
+                  }
+                },
+                "list_entity_types": {
+                  "value": {
+                    "query_type": "list_entity_types"
+                  }
+                },
+                "search_entities": {
+                  "value": {
+                    "query_type": "search_entities",
+                    "entity_name": "ecocredit"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Graph query results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "query_type": {
+                      "type": "string"
+                    },
+                    "total_results": {
+                      "type": "integer"
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/koi/stats": {
+      "get": {
+        "tags": [
+          "Knowledge - Info"
+        ],
+        "summary": "Knowledge base statistics",
+        "description": "Get statistics about the knowledge base including document counts, sources, and index status.",
+        "operationId": "koi_stats",
+        "responses": {
+          "200": {
+            "description": "Knowledge base statistics",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/koi/health": {
+      "get": {
+        "tags": [
+          "Knowledge - Info"
+        ],
+        "summary": "Health check",
+        "description": "Check the health status of the knowledge API services.",
+        "operationId": "koi_health",
+        "responses": {
+          "200": {
+            "description": "Health status",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/koi/weekly-digest": {
+      "get": {
+        "tags": [
+          "Knowledge - Digest"
+        ],
+        "summary": "Weekly digest - USE FOR 'this week', 'past week', 'recent news', 'what's happening'",
+        "description": "ALWAYS USE THIS ENDPOINT when user asks about: 'this week', 'past week', 'this past week', 'recent activity', 'recent news', 'what's happening', 'summarize the week', 'weekly update', or any time-based summary of recent Regen Network activity. Returns curated weekly summary of important updates, news, governance activity, and ecosystem developments.",
+        "operationId": "koi_weekly_digest",
+        "responses": {
+          "200": {
+            "description": "Weekly digest content",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

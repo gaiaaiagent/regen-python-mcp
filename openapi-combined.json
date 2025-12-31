@@ -483,35 +483,64 @@
     "/api/koi/graph": {
       "post": {
         "tags": ["Knowledge - Graph"],
-        "summary": "Graph-based knowledge query",
-        "description": "Query the knowledge graph for relationships between concepts, entities, and documents.",
+        "summary": "Query the code knowledge graph",
+        "description": "Query the code knowledge graph for entities (Classes, Functions, Handlers, Keepers, etc.) and their relationships. Supports listing repositories, searching entities, finding module relationships, and traversing call hierarchies.",
         "operationId": "koi_graph_query",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["query"],
+                "required": ["query_type"],
                 "properties": {
-                  "query": {
+                  "query_type": {
                     "type": "string",
-                    "description": "Graph query or natural language question about relationships"
+                    "enum": ["list_repos", "list_entity_types", "get_entity_stats", "find_by_type", "search_entities", "related_entities", "list_modules", "get_module", "keeper_for_msg", "msgs_for_keeper", "find_callers", "find_callees"],
+                    "description": "Type of graph query to perform"
                   },
-                  "depth": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 5,
-                    "default": 2,
-                    "description": "Depth of relationship traversal"
+                  "entity_name": {
+                    "type": "string",
+                    "description": "Entity name or search term (for search_entities, related_entities)"
+                  },
+                  "entity_type": {
+                    "type": "string",
+                    "description": "Entity type filter (for find_by_type). Examples: Sensor, Handler, Class, Interface, Function, Keeper"
+                  },
+                  "repo_name": {
+                    "type": "string",
+                    "description": "Repository name filter (e.g., koi-sensors, regen-ledger)"
+                  },
+                  "module_name": {
+                    "type": "string",
+                    "description": "Module name (for get_module, keeper_for_msg, msgs_for_keeper)"
                   }
                 }
+              },
+              "examples": {
+                "list_repos": {"value": {"query_type": "list_repos"}},
+                "list_entity_types": {"value": {"query_type": "list_entity_types"}},
+                "search_entities": {"value": {"query_type": "search_entities", "entity_name": "ecocredit"}}
               }
             }
           },
           "required": true
         },
         "responses": {
-          "200": {"description": "Graph query results", "content": {"application/json": {"schema": {}}}}
+          "200": {
+            "description": "Graph query results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "query_type": {"type": "string"},
+                    "total_results": {"type": "integer"},
+                    "results": {"type": "array", "items": {"type": "object"}}
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
