@@ -1041,6 +1041,9 @@ class RegenClient:
             raise
 
     # Governance module queries
+    # Note: Using /cosmos/gov/v1 API instead of v1beta1 because Regen Network
+    # upgraded to gov v1 and some newer proposals can't be converted back to
+    # v1beta1 format (causes HTTP 500 "can't convert gov/v1 Proposal to gov/v1beta1").
 
     async def get_governance_proposal(self, proposal_id: str) -> Dict[str, Any]:
         """Query specific governance proposal.
@@ -1053,7 +1056,7 @@ class RegenClient:
         """
         try:
             response = await self._make_request(
-                f"/cosmos/gov/v1beta1/proposals/{proposal_id}",
+                f"/cosmos/gov/v1/proposals/{proposal_id}",
                 endpoint_type="rest"
             )
             return response
@@ -1091,7 +1094,7 @@ class RegenClient:
 
         try:
             response = await self._make_request(
-                "/cosmos/gov/v1beta1/proposals",
+                "/cosmos/gov/v1/proposals",
                 endpoint_type="rest",
                 params=params
             )
@@ -1112,7 +1115,7 @@ class RegenClient:
         """
         try:
             response = await self._make_request(
-                f"/cosmos/gov/v1beta1/proposals/{proposal_id}/votes/{voter}",
+                f"/cosmos/gov/v1/proposals/{proposal_id}/votes/{voter}",
                 endpoint_type="rest"
             )
             return response
@@ -1140,7 +1143,7 @@ class RegenClient:
 
         try:
             response = await self._make_request(
-                f"/cosmos/gov/v1beta1/proposals/{proposal_id}/votes",
+                f"/cosmos/gov/v1/proposals/{proposal_id}/votes",
                 endpoint_type="rest",
                 params=params
             )
@@ -1169,7 +1172,7 @@ class RegenClient:
 
         try:
             response = await self._make_request(
-                f"/cosmos/gov/v1beta1/proposals/{proposal_id}/deposits",
+                f"/cosmos/gov/v1/proposals/{proposal_id}/deposits",
                 endpoint_type="rest",
                 params=params
             )
@@ -1188,6 +1191,8 @@ class RegenClient:
             Dictionary containing governance parameters
         """
         try:
+            # Note: v1/params endpoint is not implemented on Regen nodes (501 Not Implemented)
+            # Fall back to v1beta1 for params queries
             response = await self._make_request(
                 f"/cosmos/gov/v1beta1/params/{params_type}",
                 endpoint_type="rest"
@@ -1209,7 +1214,7 @@ class RegenClient:
         """
         try:
             response = await self._make_request(
-                f"/cosmos/gov/v1beta1/proposals/{proposal_id}/deposits/{depositor}",
+                f"/cosmos/gov/v1/proposals/{proposal_id}/deposits/{depositor}",
                 endpoint_type="rest"
             )
             return response
@@ -1228,7 +1233,7 @@ class RegenClient:
         """
         try:
             response = await self._make_request(
-                f"/cosmos/gov/v1beta1/proposals/{proposal_id}/tally",
+                f"/cosmos/gov/v1/proposals/{proposal_id}/tally",
                 endpoint_type="rest"
             )
             return response

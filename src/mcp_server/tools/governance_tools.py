@@ -1,4 +1,8 @@
-"""Governance module tools for Regen Network MCP server."""
+"""Governance module tools for Regen Network MCP server.
+
+Note: Uses /cosmos/gov/v1 API (not v1beta1) because Regen Network upgraded
+to gov v1 and some proposals can't be converted back to v1beta1 format.
+"""
 
 import logging
 from typing import Dict, Any, Optional, Union
