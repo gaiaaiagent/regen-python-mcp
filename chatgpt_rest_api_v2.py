@@ -18,14 +18,16 @@ import sys
 import asyncio
 import logging
 import json
+import time
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from enum import Enum
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from fastapi import FastAPI, HTTPException, Query, Path as PathParam
+from fastapi import FastAPI, HTTPException, Query, Path as PathParam, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 import uvicorn
 
@@ -37,6 +39,21 @@ from mcp_server.tools import (
     basket_tools,
     credit_tools,
     analytics_tools,
+)
+from mcp_server.middleware import (
+    RequestIDMiddleware,
+    TransientError,
+    GovernanceUnavailableError,
+    get_request_id,
+    add_tool_trace,
+    create_envelope,
+    create_error_envelope,
+    extract_pagination_from_response,
+    is_transient_error,
+)
+from mcp_server.models.response_envelope import (
+    DataSource,
+    create_tool_trace,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -105,6 +122,63 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add Request ID middleware for X-Request-ID header support
+app.add_middleware(RequestIDMiddleware)
+
+
+# ============================================================================
+# Exception Handlers
+# ============================================================================
+
+@app.exception_handler(TransientError)
+async def transient_error_handler(request: Request, exc: TransientError):
+    """Handle transient errors with 503 status and retryable flag."""
+    request_id = getattr(request.state, "request_id", get_request_id())
+
+    error_response = create_error_envelope(
+        request_id=request_id,
+        code=exc.code,
+        message=exc.message,
+        retryable=True,
+        retry_after_ms=exc.retry_after_ms,
+        details=exc.details,
+        warnings=["This is a transient error. Please retry after the suggested delay."]
+    )
+
+    response = JSONResponse(
+        status_code=503,
+        content=error_response,
+    )
+    response.headers["X-Request-ID"] = request_id
+    response.headers["Retry-After"] = str(exc.retry_after_ms // 1000)  # seconds
+
+    return response
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions with structured error response."""
+    request_id = getattr(request.state, "request_id", get_request_id())
+
+    # Determine if this might be a transient error based on status code
+    retryable = exc.status_code in (502, 503, 504)
+
+    error_response = create_error_envelope(
+        request_id=request_id,
+        code=f"HTTP_{exc.status_code}",
+        message=str(exc.detail),
+        retryable=retryable,
+        retry_after_ms=5000 if retryable else None,
+    )
+
+    response = JSONResponse(
+        status_code=exc.status_code,
+        content=error_response,
+    )
+    response.headers["X-Request-ID"] = request_id
+
+    return response
 
 
 # ============================================================================
@@ -243,60 +317,142 @@ async def get_api_summary():
 
 
 # ============================================================================
-# ECOCREDITS (4 endpoints) - Unchanged
+# ECOCREDITS (4 endpoints) - With response envelope
 # ============================================================================
 
 @app.get("/ecocredits/types", summary="List credit types", tags=["Ecocredits"])
-async def list_credit_types():
+async def list_credit_types(request: Request):
     """List all ecological credit types enabled on Regen (Carbon, Biodiversity, etc.)."""
+    start_time = time.time()
     result = await credit_tools.list_credit_types()
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    # Add tool trace
+    trace = create_tool_trace(
+        tool="list_credit_types",
+        params={},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+    )
 
 
 @app.get("/ecocredits/classes", summary="List credit classes", tags=["Ecocredits"])
 async def list_credit_classes(
+    request: Request,
     limit: int = Query(100, ge=1, le=500, description="Max results to return"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
 ):
     """List credit classes (methodologies for measuring ecological benefits)."""
+    start_time = time.time()
     result = await credit_tools.list_credit_classes(limit, offset)
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="list_credit_classes",
+        params={"limit": limit, "offset": offset},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    pagination = extract_pagination_from_response(result, offset, limit)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        pagination=pagination,
+    )
 
 
 @app.get("/ecocredits/projects", summary="List projects", tags=["Ecocredits"])
 async def list_projects(
+    request: Request,
     limit: int = Query(100, ge=1, le=500, description="Max results to return"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
 ):
     """List ecological projects registered on Regen that generate credits."""
+    start_time = time.time()
     result = await credit_tools.list_projects(limit, offset)
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="list_projects",
+        params={"limit": limit, "offset": offset},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    pagination = extract_pagination_from_response(result, offset, limit)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        pagination=pagination,
+    )
 
 
 @app.get("/ecocredits/batches", summary="List credit batches", tags=["Ecocredits"])
 async def list_credit_batches(
+    request: Request,
     limit: int = Query(100, ge=1, le=500, description="Max results to return"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
 ):
     """List issued credit batches with vintage dates and supply info."""
+    start_time = time.time()
     result = await credit_tools.list_credit_batches(limit, offset)
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="list_credit_batches",
+        params={"limit": limit, "offset": offset},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    pagination = extract_pagination_from_response(result, offset, limit)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        pagination=pagination,
+    )
 
 
 # ============================================================================
-# MARKETPLACE (2 endpoints) - Consolidated from 5
+# MARKETPLACE (2 endpoints) - Consolidated from 5, with response envelope
 # ============================================================================
 
 @app.get("/marketplace/orders", summary="Query sell orders", tags=["Marketplace"])
 async def query_marketplace_orders(
+    request: Request,
     id: Optional[int] = Query(None, description="Get specific order by ID"),
     batch: Optional[str] = Query(None, description="Filter orders by credit batch denom"),
     seller: Optional[str] = Query(None, description="Filter orders by seller address"),
@@ -309,56 +465,141 @@ async def query_marketplace_orders(
     - ?batch=C01-001-...: Filter orders for a credit batch
     - ?seller=regen1...: Filter orders by seller address
     """
+    start_time = time.time()
+    offset = (page - 1) * limit
+
     if id is not None:
         result = await marketplace_tools.get_sell_order(id)
+        tool_name = "get_sell_order"
+        params = {"id": id}
     elif batch is not None:
-        result = await marketplace_tools.list_sell_orders_by_batch(batch, limit=limit, offset=(page-1)*limit)
+        result = await marketplace_tools.list_sell_orders_by_batch(batch, limit=limit, offset=offset)
+        tool_name = "list_sell_orders_by_batch"
+        params = {"batch": batch, "limit": limit, "offset": offset}
     elif seller is not None:
-        result = await marketplace_tools.list_sell_orders_by_seller(seller, limit=limit, offset=(page-1)*limit)
+        result = await marketplace_tools.list_sell_orders_by_seller(seller, limit=limit, offset=offset)
+        tool_name = "list_sell_orders_by_seller"
+        params = {"seller": seller, "limit": limit, "offset": offset}
     else:
-        result = await marketplace_tools.list_sell_orders(limit=limit, offset=(page-1)*limit)
+        result = await marketplace_tools.list_sell_orders(limit=limit, offset=offset)
+        tool_name = "list_sell_orders"
+        params = {"limit": limit, "offset": offset}
 
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool=tool_name,
+        params=params,
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    pagination = extract_pagination_from_response(result, offset, limit) if id is None else None
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        pagination=pagination,
+    )
 
 
 @app.get("/marketplace/denoms", summary="Allowed payment tokens", tags=["Marketplace"])
-async def list_allowed_denoms():
+async def list_allowed_denoms(request: Request):
     """List token denominations accepted for marketplace payments."""
+    start_time = time.time()
     result = await marketplace_tools.list_allowed_denoms()
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="list_allowed_denoms",
+        params={},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+    )
 
 
 # ============================================================================
-# BASKETS (3 endpoints) - Consolidated from 5
+# BASKETS (3 endpoints) - Consolidated from 5, with response envelope
 # ============================================================================
 
 @app.get("/baskets", summary="List baskets", tags=["Baskets"])
 async def list_baskets(
+    request: Request,
     limit: int = Query(100, ge=1, le=500, description="Max results to return"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
 ):
     """List ecocredit baskets (pooled credits represented as fungible tokens)."""
+    start_time = time.time()
     result = await basket_tools.list_baskets(limit, offset)
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="list_baskets",
+        params={"limit": limit, "offset": offset},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    pagination = extract_pagination_from_response(result, offset, limit)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        pagination=pagination,
+    )
 
 
 @app.get("/baskets/fee", summary="Basket creation fee", tags=["Baskets"])
-async def get_basket_fee():
+async def get_basket_fee(request: Request):
     """Get the fee required to create a new ecocredit basket."""
+    start_time = time.time()
     result = await basket_tools.get_basket_fee()
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="get_basket_fee",
+        params={},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+    )
 
 
 @app.get("/baskets/{denom}", summary="Get basket details", tags=["Baskets"])
 async def get_basket_details(
+    request: Request,
     denom: str = PathParam(..., description="Basket token denomination"),
     include_balances: bool = Query(False, description="Include credit batches held in basket"),
     batch: Optional[str] = Query(None, description="Get balance for specific batch only"),
@@ -370,8 +611,13 @@ async def get_basket_details(
     - ?include_balances=true: Also return all credit batches in the basket
     - ?include_balances=true&batch=X: Get balance for a specific batch
     """
+    start_time = time.time()
+    warnings = []
+
     basket_result = await basket_tools.get_basket(denom)
     if "error" in basket_result:
+        if is_transient_error(basket_result["error"]):
+            raise TransientError(message=basket_result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=basket_result["error"])
 
     response = {"basket": basket_result}
@@ -382,23 +628,40 @@ async def get_basket_details(
                 balance_result = await basket_tools.get_basket_balance(denom, batch)
                 if "error" not in balance_result:
                     response["batch_balance"] = balance_result
+                else:
+                    warnings.append(f"batch_balance_error: {balance_result['error']}")
             else:
                 balances_result = await basket_tools.list_basket_balances(denom, limit, offset)
                 if "error" not in balances_result:
                     response["balances"] = balances_result
+                else:
+                    warnings.append(f"balances_error: {balances_result['error']}")
         except Exception as e:
-            # Basket balances may not be supported by all RPC endpoints
-            response["balances_error"] = f"Balance query not supported: {str(e)}"
+            warnings.append(f"Balance query not supported: {str(e)}")
 
-    return response
+    trace = create_tool_trace(
+        tool="get_basket",
+        params={"denom": denom, "include_balances": include_balances, "batch": batch},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=response,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        warnings=warnings if warnings else None,
+    )
 
 
 # ============================================================================
-# BANK (5 endpoints) - Consolidated from 11
+# BANK (5 endpoints) - Consolidated from 11, with response envelope
 # ============================================================================
 
 @app.get("/bank/accounts", summary="Query accounts", tags=["Bank"])
 async def query_bank_accounts(
+    request: Request,
     address: Optional[str] = Query(None, description="Get specific account by address"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(100, ge=1, le=200, description="Results per page"),
@@ -407,18 +670,44 @@ async def query_bank_accounts(
     - No params: List all accounts (paginated)
     - ?address=regen1...: Get specific account details
     """
+    start_time = time.time()
+    offset = (page - 1) * limit
+
     if address:
         result = await bank_tools.get_account(address)
+        tool_name = "get_account"
+        params = {"address": address}
     else:
         result = await bank_tools.list_accounts(page, limit)
+        tool_name = "list_accounts"
+        params = {"page": page, "limit": limit}
 
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool=tool_name,
+        params=params,
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    pagination = extract_pagination_from_response(result, offset, limit) if not address else None
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        pagination=pagination,
+    )
 
 
 @app.get("/bank/balances/{address}", summary="Get account balances", tags=["Bank"])
 async def get_account_balances(
+    request: Request,
     address: str = PathParam(..., description="Regen account address"),
     denom: Optional[str] = Query(None, description="Get balance for specific token only"),
     spendable: bool = Query(False, description="Return only spendable balances"),
@@ -430,20 +719,48 @@ async def get_account_balances(
     - ?denom=uregen: Balance for specific token only
     - ?spendable=true: Only spendable balances (excludes vesting/locked)
     """
+    start_time = time.time()
+    offset = (page - 1) * limit
+
     if spendable:
         result = await bank_tools.get_spendable_balances(address, page, limit)
+        tool_name = "get_spendable_balances"
+        params = {"address": address, "page": page, "limit": limit, "spendable": True}
     elif denom:
         result = await bank_tools.get_balance(address, denom)
+        tool_name = "get_balance"
+        params = {"address": address, "denom": denom}
     else:
         result = await bank_tools.get_all_balances(address, page, limit)
+        tool_name = "get_all_balances"
+        params = {"address": address, "page": page, "limit": limit}
 
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool=tool_name,
+        params=params,
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    pagination = extract_pagination_from_response(result, offset, limit) if not denom else None
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        pagination=pagination,
+    )
 
 
 @app.get("/bank/supply", summary="Query token supply", tags=["Bank"])
 async def query_token_supply(
+    request: Request,
     denom: Optional[str] = Query(None, description="Get supply for specific token"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(100, ge=1, le=200, description="Results per page"),
@@ -452,18 +769,44 @@ async def query_token_supply(
     - No params: Total supply of all tokens
     - ?denom=uregen: Supply of specific token
     """
+    start_time = time.time()
+    offset = (page - 1) * limit
+
     if denom:
         result = await bank_tools.get_supply_of(denom)
+        tool_name = "get_supply_of"
+        params = {"denom": denom}
     else:
         result = await bank_tools.get_total_supply(page, limit)
+        tool_name = "get_total_supply"
+        params = {"page": page, "limit": limit}
 
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool=tool_name,
+        params=params,
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    pagination = extract_pagination_from_response(result, offset, limit) if not denom else None
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        pagination=pagination,
+    )
 
 
 @app.get("/bank/metadata", summary="Query token metadata", tags=["Bank"])
 async def query_token_metadata(
+    request: Request,
     denom: Optional[str] = Query(None, description="Get metadata for specific token"),
     include_owners: bool = Query(False, description="Include list of token holders (requires denom)"),
     page: int = Query(1, ge=1, description="Page number"),
@@ -474,9 +817,15 @@ async def query_token_metadata(
     - ?denom=uregen: Metadata for specific token
     - ?denom=uregen&include_owners=true: Also include token holders
     """
+    start_time = time.time()
+    offset = (page - 1) * limit
+    warnings = []
+
     if denom:
         metadata_result = await bank_tools.get_denom_metadata(denom)
         if "error" in metadata_result:
+            if is_transient_error(metadata_result["error"]):
+                raise TransientError(message=metadata_result["error"], code="UPSTREAM_ERROR")
             raise HTTPException(status_code=400, detail=metadata_result["error"])
 
         response = {"metadata": metadata_result}
@@ -485,48 +834,133 @@ async def query_token_metadata(
             owners_result = await bank_tools.get_denom_owners(denom, page, limit)
             if "error" not in owners_result:
                 response["owners"] = owners_result
+            else:
+                warnings.append(f"owners_error: {owners_result['error']}")
 
-        return response
+        trace = create_tool_trace(
+            tool="get_denom_metadata",
+            params={"denom": denom, "include_owners": include_owners},
+            data_source=DataSource.ON_CHAIN,
+            duration_ms=(time.time() - start_time) * 1000
+        )
+        add_tool_trace(trace)
+
+        return create_envelope(
+            data=response,
+            request_id=get_request_id(),
+            data_source=DataSource.ON_CHAIN,
+            warnings=warnings if warnings else None,
+        )
     else:
         result = await bank_tools.get_denoms_metadata(page, limit)
         if "error" in result:
+            if is_transient_error(result["error"]):
+                raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
             raise HTTPException(status_code=400, detail=result["error"])
-        return result
+
+        trace = create_tool_trace(
+            tool="get_denoms_metadata",
+            params={"page": page, "limit": limit},
+            data_source=DataSource.ON_CHAIN,
+            duration_ms=(time.time() - start_time) * 1000
+        )
+        add_tool_trace(trace)
+
+        pagination = extract_pagination_from_response(result, offset, limit)
+
+        return create_envelope(
+            data=result,
+            request_id=get_request_id(),
+            data_source=DataSource.ON_CHAIN,
+            pagination=pagination,
+        )
 
 
 @app.get("/bank/params", summary="Bank module params", tags=["Bank"])
-async def get_bank_params():
+async def get_bank_params(request: Request):
     """Get bank module parameters (send enabled, default settings)."""
+    start_time = time.time()
     result = await bank_tools.get_bank_params()
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="get_bank_params",
+        params={},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+    )
 
 
 # ============================================================================
-# DISTRIBUTION (4 endpoints) - Consolidated from 9
+# DISTRIBUTION (4 endpoints) - Consolidated from 9, with response envelope
 # ============================================================================
 
 @app.get("/distribution/params", summary="Distribution params", tags=["Distribution"])
-async def get_distribution_params():
+async def get_distribution_params(request: Request):
     """Get distribution module parameters (community tax, base proposer reward, etc.)."""
+    start_time = time.time()
     result = await distribution_tools.get_distribution_params()
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="get_distribution_params",
+        params={},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+    )
 
 
 @app.get("/distribution/pool", summary="Community pool", tags=["Distribution"])
-async def get_community_pool():
+async def get_community_pool(request: Request):
     """Get community pool balance (funds available for governance spending)."""
+    start_time = time.time()
     result = await distribution_tools.get_community_pool()
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="get_community_pool",
+        params={},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+    )
 
 
 @app.get("/distribution/validator/{address}", summary="Validator distribution info", tags=["Distribution"])
 async def get_validator_distribution(
+    request: Request,
     address: str = PathParam(..., description="Validator operator address (regenvaloper1...)"),
     starting_height: Optional[int] = Query(None, ge=0, description="Start block for slashes"),
     ending_height: Optional[int] = Query(None, ge=0, description="End block for slashes"),
@@ -538,6 +972,9 @@ async def get_validator_distribution(
     - Accumulated commission
     - Slashing events (with optional height range filter)
     """
+    start_time = time.time()
+    warnings = []
+
     # Fetch all three in parallel
     rewards_task = distribution_tools.get_validator_outstanding_rewards(address)
     commission_task = distribution_tools.get_validator_commission(address)
@@ -549,16 +986,40 @@ async def get_validator_distribution(
         rewards_task, commission_task, slashes_task
     )
 
-    return {
+    # Collect warnings for partial failures
+    if "error" in rewards:
+        warnings.append(f"rewards_error: {rewards['error']}")
+    if "error" in commission:
+        warnings.append(f"commission_error: {commission['error']}")
+    if "error" in slashes:
+        warnings.append(f"slashes_error: {slashes['error']}")
+
+    response_data = {
         "validator_address": address,
         "outstanding_rewards": rewards if "error" not in rewards else None,
         "commission": commission if "error" not in commission else None,
         "slashes": slashes if "error" not in slashes else None,
     }
 
+    trace = create_tool_trace(
+        tool="get_validator_distribution",
+        params={"address": address, "starting_height": starting_height, "ending_height": ending_height},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=response_data,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        warnings=warnings if warnings else None,
+    )
+
 
 @app.get("/distribution/delegator/{address}", summary="Delegator distribution info", tags=["Distribution"])
 async def get_delegator_distribution(
+    request: Request,
     address: str = PathParam(..., description="Delegator account address (regen1...)"),
     validator: Optional[str] = Query(None, description="Get rewards for specific validator only"),
 ):
@@ -566,15 +1027,23 @@ async def get_delegator_distribution(
     - Basic: Total rewards, list of validators, withdraw address
     - ?validator=regenvaloper1...: Rewards from specific validator only
     """
+    start_time = time.time()
+    warnings = []
+
     if validator:
         result = await distribution_tools.get_delegation_rewards(address, validator)
         if "error" in result:
+            if is_transient_error(result["error"]):
+                raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
             raise HTTPException(status_code=400, detail=result["error"])
-        return {
+
+        response_data = {
             "delegator_address": address,
             "validator_address": validator,
             "rewards": result
         }
+        tool_name = "get_delegation_rewards"
+        params = {"address": address, "validator": validator}
     else:
         # Fetch all delegator info in parallel
         total_task = distribution_tools.get_delegation_total_rewards(address)
@@ -585,20 +1054,46 @@ async def get_delegator_distribution(
             total_task, validators_task, withdraw_task
         )
 
-        return {
+        # Collect warnings for partial failures
+        if "error" in total:
+            warnings.append(f"total_rewards_error: {total['error']}")
+        if "error" in validators:
+            warnings.append(f"validators_error: {validators['error']}")
+        if "error" in withdraw:
+            warnings.append(f"withdraw_address_error: {withdraw['error']}")
+
+        response_data = {
             "delegator_address": address,
             "total_rewards": total if "error" not in total else None,
             "validators": validators if "error" not in validators else None,
             "withdraw_address": withdraw if "error" not in withdraw else None,
         }
+        tool_name = "get_delegator_distribution"
+        params = {"address": address}
+
+    trace = create_tool_trace(
+        tool=tool_name,
+        params=params,
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=response_data,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        warnings=warnings if warnings else None,
+    )
 
 
 # ============================================================================
-# GOVERNANCE (4 endpoints) - Consolidated from 8
+# GOVERNANCE (4 endpoints) - Consolidated from 8, with response envelope + 503 for transient errors
 # ============================================================================
 
 @app.get("/governance/params", summary="Governance params", tags=["Governance"])
-async def get_governance_params(
+async def get_governance_params_endpoint(
+    request: Request,
     type: Optional[GovParamsType] = Query(None, description="Param type: voting, deposit, tally, or all"),
 ):
     """Get governance module parameters. Options:
@@ -607,39 +1102,73 @@ async def get_governance_params(
     - ?type=deposit: Min deposit, max deposit period
     - ?type=tally: Quorum, threshold, veto threshold
     """
+    start_time = time.time()
+    warnings = []
+
     if type and type != GovParamsType.all:
         # Note: "tally" endpoint doesn't work on cosmos gov v1beta1, extract from voting
         if type.value == "tally":
             result = await governance_tools.get_governance_params("voting")
             if "error" in result:
-                raise HTTPException(status_code=400, detail=result["error"])
-            # Extract tally_params from voting response
-            return {"tally_params": result.get("tally_params")}
-        result = await governance_tools.get_governance_params(type.value)
-        if "error" in result:
-            raise HTTPException(status_code=400, detail=result["error"])
-        return result
+                # Governance errors are transient - use 503
+                raise GovernanceUnavailableError(
+                    message=result["error"],
+                    details={"type": "tally", "underlying_query": "voting"}
+                )
+            response_data = {"tally_params": result.get("tally_params")}
+        else:
+            result = await governance_tools.get_governance_params(type.value)
+            if "error" in result:
+                raise GovernanceUnavailableError(
+                    message=result["error"],
+                    details={"type": type.value}
+                )
+            response_data = result
     else:
         # Get all params (voting and deposit both include all params)
         async def safe_fetch(query_type: str):
             try:
                 return await governance_tools.get_governance_params(query_type)
-            except Exception:
-                return None
+            except Exception as e:
+                return {"error": str(e)}
 
         voting, deposit = await asyncio.gather(
             safe_fetch("voting"), safe_fetch("deposit")
         )
 
-        return {
+        # Collect warnings for partial failures
+        if voting and "error" in voting:
+            warnings.append(f"voting_params_error: {voting['error']}")
+            voting = None
+        if deposit and "error" in deposit:
+            warnings.append(f"deposit_params_error: {deposit['error']}")
+            deposit = None
+
+        response_data = {
             "voting": voting,
             "deposit": deposit,
             "tally": {"tally_params": voting.get("tally_params")} if voting else None,
         }
 
+    trace = create_tool_trace(
+        tool="get_governance_params",
+        params={"type": type.value if type else "all"},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=response_data,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        warnings=warnings if warnings else None,
+    )
+
 
 @app.get("/governance/proposals", summary="Query proposals", tags=["Governance"])
 async def query_governance_proposals(
+    request: Request,
     id: Optional[int] = Query(None, description="Get specific proposal by ID"),
     status: Optional[ProposalStatus] = Query(None, description="Filter by status"),
     voter: Optional[str] = Query(None, description="Filter proposals this address voted on"),
@@ -654,8 +1183,13 @@ async def query_governance_proposals(
     - ?voter=regen1...: Proposals the address voted on
     - ?depositor=regen1...: Proposals the address deposited to
     """
+    start_time = time.time()
+    offset = (page - 1) * limit
+
     if id is not None:
         result = await governance_tools.get_governance_proposal(id)
+        tool_name = "get_governance_proposal"
+        params = {"id": id}
     else:
         result = await governance_tools.list_governance_proposals(
             proposal_status=status.value if status else None,
@@ -664,14 +1198,37 @@ async def query_governance_proposals(
             page=page,
             limit=limit
         )
+        tool_name = "list_governance_proposals"
+        params = {"status": status.value if status else None, "voter": voter, "depositor": depositor, "page": page, "limit": limit}
 
     if "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
-    return result
+        # Governance errors are transient - use 503 with retryable flag
+        raise GovernanceUnavailableError(
+            message=result["error"],
+            details={"tool": tool_name, "params": {k: v for k, v in params.items() if v is not None}}
+        )
+
+    trace = create_tool_trace(
+        tool=tool_name,
+        params=params,
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    pagination = extract_pagination_from_response(result, offset, limit) if id is None else None
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        pagination=pagination,
+    )
 
 
 @app.get("/governance/proposal/{id}/full", summary="Full proposal details", tags=["Governance"])
 async def get_proposal_full_details(
+    request: Request,
     id: int = PathParam(..., description="Proposal ID"),
     voter: Optional[str] = Query(None, description="Filter votes to specific voter"),
     depositor: Optional[str] = Query(None, description="Filter deposits to specific depositor"),
@@ -684,10 +1241,21 @@ async def get_proposal_full_details(
     - Deposits (all, or filtered to specific depositor)
     - Current tally results
     """
+    start_time = time.time()
+    warnings = []
+
     # Fetch proposal first (we need this to succeed)
     proposal = await governance_tools.get_governance_proposal(id)
     if "error" in proposal:
-        raise HTTPException(status_code=404, detail=f"Proposal {id} not found")
+        # Check if this looks like a "not found" vs transient error
+        error_lower = proposal["error"].lower()
+        if "not found" in error_lower or "does not exist" in error_lower:
+            raise HTTPException(status_code=404, detail=f"Proposal {id} not found")
+        # Otherwise it's a transient governance error
+        raise GovernanceUnavailableError(
+            message=proposal["error"],
+            details={"proposal_id": id}
+        )
 
     # Fetch votes, deposits, tally in parallel
     if voter:
@@ -706,50 +1274,126 @@ async def get_proposal_full_details(
         votes_task, deposits_task, tally_task
     )
 
-    return {
+    # Collect warnings for partial failures
+    if "error" in votes:
+        warnings.append(f"votes_error: {votes['error']}")
+    if "error" in deposits:
+        warnings.append(f"deposits_error: {deposits['error']}")
+    if "error" in tally:
+        warnings.append(f"tally_error: {tally['error']}")
+
+    response_data = {
         "proposal": proposal,
         "votes": votes if "error" not in votes else None,
         "deposits": deposits if "error" not in deposits else None,
         "tally": tally if "error" not in tally else None,
     }
 
+    trace = create_tool_trace(
+        tool="get_proposal_full_details",
+        params={"id": id, "voter": voter, "depositor": depositor},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=response_data,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+        warnings=warnings if warnings else None,
+    )
+
 
 @app.get("/governance/pool", summary="Community pool", tags=["Governance"])
-async def get_governance_community_pool():
+async def get_governance_community_pool(request: Request):
     """Get community pool balance (alias for /distribution/pool)."""
+    start_time = time.time()
     result = await distribution_tools.get_community_pool()
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="get_community_pool",
+        params={},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+    )
 
 
 # ============================================================================
-# ANALYTICS (3 endpoints) - Unchanged
+# ANALYTICS (3 endpoints) - With response envelope
 # ============================================================================
 
 @app.get("/analytics/portfolio/{address}", summary="Portfolio impact analysis", tags=["Analytics"])
-async def analyze_portfolio_impact(
+async def analyze_portfolio_impact_endpoint(
+    request: Request,
     address: str = PathParam(..., description="Account address to analyze"),
     analysis_type: str = Query("full", description="Analysis type: full, credits, or summary"),
 ):
     """Analyze ecological impact of an address's credit holdings."""
+    start_time = time.time()
     result = await analytics_tools.analyze_portfolio_impact(address, analysis_type)
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="analyze_portfolio_impact",
+        params={"address": address, "analysis_type": analysis_type},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+    )
 
 
 @app.get("/analytics/trends", summary="Market trends", tags=["Analytics"])
-async def analyze_market_trends(
+async def analyze_market_trends_endpoint(
+    request: Request,
     credit_types: Optional[str] = Query(None, description="Comma-separated credit type codes: C (Carbon), BT (BioTerra), KSH (Kilo-Sheep-Hour), USS (Umbrella Species), MBS (Marine Biodiversity). Example: C,BT"),
     time_period: str = Query("30d", description="Time period: 7d, 30d, 90d, 1y"),
 ):
     """Analyze market trends across credit types. Call without parameters for all credit types."""
+    start_time = time.time()
     types_list = credit_types.split(",") if credit_types else None
     result = await analytics_tools.analyze_market_trends(time_period, types_list)
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="analyze_market_trends",
+        params={"credit_types": credit_types, "time_period": time_period},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+    )
 
 
 class MethodologyCompareRequest(BaseModel):
@@ -758,12 +1402,32 @@ class MethodologyCompareRequest(BaseModel):
 
 
 @app.post("/analytics/compare", summary="Compare methodologies", tags=["Analytics"])
-async def compare_credit_methodologies(request: MethodologyCompareRequest):
+async def compare_credit_methodologies_endpoint(
+    http_request: Request,
+    request: MethodologyCompareRequest,
+):
     """Compare different credit class methodologies for impact efficiency."""
+    start_time = time.time()
     result = await analytics_tools.compare_credit_methodologies(request.class_ids)
+
     if "error" in result:
+        if is_transient_error(result["error"]):
+            raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
         raise HTTPException(status_code=400, detail=result["error"])
-    return result
+
+    trace = create_tool_trace(
+        tool="compare_credit_methodologies",
+        params={"class_ids": request.class_ids},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
+    )
 
 
 # ============================================================================
