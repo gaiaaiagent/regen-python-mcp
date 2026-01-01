@@ -2667,7 +2667,7 @@
           "Ledger - Ecocredits"
         ],
         "summary": "List credit batches",
-        "description": "List issued credit batches with vintage dates and supply info.",
+        "description": "List issued credit batches with vintage dates and supply info.\n\nOptions:\n- Default: Returns paginated list of individual batches\n- ?summary=true: Returns aggregate summary by credit type (totals for issued/tradable/retired)\n- ?summary=true&fetch_all=true: Fetches all pages to compute complete summary totals\n\nThe summary mode is designed to reduce agent-side pagination loops for common analytics.",
         "operationId": "list_credit_batches",
         "parameters": [
           {
@@ -2692,36 +2692,96 @@
               "default": 0
             },
             "description": "Number of results to skip"
+          },
+          {
+            "name": "summary",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Return aggregate summary by credit type instead of individual batches. Reduces pagination loops for analytics use cases."
+          },
+          {
+            "name": "fetch_all",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "When summary=true, fetch all pages to compute complete totals. Without this, summary is computed from first page only. Max 50 pages."
           }
         ],
         "responses": {
           "200": {
-            "description": "List of credit batches",
+            "description": "List of credit batches or summary",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Response_CreditBatches"
                 },
-                "example": {
-                  "data": {
-                    "batches": [
-                      {
-                        "issuer": "regen1...",
-                        "project_id": "C01-001",
-                        "denom": "C01-001-20200101-20201231-001",
-                        "metadata": "regen:...",
-                        "start_date": "2020-01-01",
-                        "end_date": "2020-12-31",
-                        "open": false
+                "examples": {
+                  "batches": {
+                    "summary": "Standard batch list",
+                    "value": {
+                      "data": {
+                        "batches": [
+                          {
+                            "issuer": "regen1...",
+                            "project_id": "C01-001",
+                            "denom": "C01-001-20200101-20201231-001",
+                            "metadata": "regen:...",
+                            "start_date": "2020-01-01",
+                            "end_date": "2020-12-31",
+                            "open": false
+                          }
+                        ]
+                      },
+                      "request_id": "550e8400-e29b-41d4-a716-446655440004",
+                      "data_source": "on-chain",
+                      "pagination": {
+                        "offset": 0,
+                        "limit": 100,
+                        "total": 200
                       }
-                    ]
+                    }
                   },
-                  "request_id": "550e8400-e29b-41d4-a716-446655440004",
-                  "data_source": "on-chain",
-                  "pagination": {
-                    "offset": 0,
-                    "limit": 100,
-                    "total": 200
+                  "summary": {
+                    "summary": "Aggregate summary by credit type",
+                    "value": {
+                      "data": {
+                        "summary": [
+                          {
+                            "credit_type": "C",
+                            "batch_count": 150,
+                            "total_issued": 1500000.0,
+                            "total_tradable": 500000.0,
+                            "total_retired": 1000000.0,
+                            "total_cancelled": 0.0,
+                            "unique_classes": 12,
+                            "unique_projects": 45
+                          }
+                        ],
+                        "batches_analyzed": 200,
+                        "total_batches": 200,
+                        "aggregation": {
+                          "method": "by_credit_type",
+                          "metrics": [
+                            "total_issued",
+                            "total_tradable",
+                            "total_retired",
+                            "total_cancelled"
+                          ]
+                        }
+                      },
+                      "request_id": "550e8400-e29b-41d4-a716-446655440005",
+                      "data_source": "on-chain",
+                      "warnings": [
+                        "PAGINATION_NOT_EXHAUSTED: Summary computed from 50 pages (5000 batches). Total may be higher."
+                      ]
+                    }
                   }
                 }
               }
@@ -4742,26 +4802,105 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "query_type": {
-                      "type": "string"
-                    },
-                    "results": {
-                      "type": "array",
-                      "items": {
-                        "type": "object"
-                      },
-                      "description": "Query results (structure depends on query_type)"
+                    "data": {
+                      "type": "object",
+                      "description": "Entity query payload (shape depends on query_type)",
+                      "properties": {
+                        "query_type": {
+                          "type": "string"
+                        },
+                        "query_label": {
+                          "type": "string"
+                        },
+                        "winner": {
+                          "type": "object"
+                        },
+                        "alternatives": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "is_polysemy": {
+                          "type": "boolean"
+                        }
+                      }
                     },
                     "request_id": {
                       "type": "string"
+                    },
+                    "data_source": {
+                      "type": "string"
+                    },
+                    "citations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
                     },
                     "warnings": {
                       "type": "array",
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "as_of": {
+                      "type": "object"
+                    },
+                    "tool_trace": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
                     }
-                  }
+                  },
+                  "required": [
+                    "data",
+                    "request_id"
+                  ]
+                },
+                "example": {
+                  "data": {
+                    "query_type": "resolve",
+                    "query_label": "Ethereum",
+                    "variant_count": 3,
+                    "winner": {
+                      "uri": "https://regen.network/tech/b35599829c6dc565",
+                      "entity_text": "Ethereum",
+                      "entity_type": "TECHNOLOGY"
+                    },
+                    "alternatives": [
+                      {
+                        "uri": "https://regen.network/project/a3b7abd349ff09a5",
+                        "entity_text": "Ethereum",
+                        "entity_type": "PROJECT"
+                      }
+                    ],
+                    "is_polysemy": true
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440999",
+                  "data_source": "koi-derived",
+                  "citations": [],
+                  "warnings": [],
+                  "errors": [],
+                  "as_of": {
+                    "koi": {
+                      "corpus_version": "2026-01-01",
+                      "indexed_at": "2026-01-01T00:00:00Z"
+                    }
+                  },
+                  "tool_trace": [
+                    {
+                      "tool": "entity_resolve",
+                      "params_summary": "label=Ethereum,limit=5"
+                    }
+                  ]
                 }
               }
             }

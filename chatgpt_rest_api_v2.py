@@ -580,9 +580,152 @@ async def list_credit_batches(
     request: Request,
     limit: int = Query(100, ge=1, le=500, description="Max results to return"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
+    summary: bool = Query(
+        False,
+        description="Return aggregate summary by credit type instead of individual batches. "
+        "Reduces pagination loops for analytics use cases."
+    ),
+    fetch_all: bool = Query(
+        False,
+        description="When summary=true, fetch all pages to compute complete totals. "
+        "Without this, summary is computed from first page only. Max 50 pages."
+    ),
 ):
-    """List issued credit batches with vintage dates and supply info."""
+    """List issued credit batches with vintage dates and supply info.
+
+    Options:
+    - Default: Returns paginated list of individual batches
+    - ?summary=true: Returns aggregate summary by credit type (totals for issued/tradable/retired)
+    - ?summary=true&fetch_all=true: Fetches all pages to compute complete summary totals
+
+    The summary mode is designed to reduce agent-side pagination loops for common analytics.
+    """
     start_time = time.time()
+    warnings: List[str] = []
+
+    if summary:
+        # Summary mode: aggregate batches by credit type
+        from mcp_server.client.regen_client import get_regen_client
+
+        client = get_regen_client()
+
+        if fetch_all:
+            # Fetch all pages using the pagination helper
+            fetch_result = await client.fetch_all_pages(
+                path="/regen/ecocredit/v1/batches",
+                page_size=100,
+                max_pages=50,  # Safety cap
+                item_key="batches",
+            )
+            batches = fetch_result["items"]
+            warnings.extend(fetch_result.get("warnings", []))
+            if not fetch_result["exhausted"]:
+                warnings.append(
+                    f"PAGINATION_NOT_EXHAUSTED: Summary computed from {fetch_result['pages_fetched']} pages "
+                    f"({len(batches)} batches). Total may be higher."
+                )
+            total_batches = fetch_result.get("total") or len(batches)
+        else:
+            # Single page only
+            result = await credit_tools.list_credit_batches(limit, offset)
+            if "error" in result:
+                if is_transient_error(result["error"]):
+                    raise TransientError(message=result["error"], code="UPSTREAM_ERROR")
+                raise HTTPException(status_code=400, detail=result["error"])
+            batches = result.get("batches", [])
+            total_batches = len(batches)
+            warnings.append(
+                f"PARTIAL_SUMMARY: Summary computed from first page only ({len(batches)} batches). "
+                "Use fetch_all=true for complete totals."
+            )
+
+        # Compute summary by credit type
+        summary_by_type: Dict[str, Dict[str, Any]] = {}
+        for batch in batches:
+            # Extract credit type from class_id (e.g., "C01" -> "C", "BT01" -> "BT")
+            class_id = batch.get("class_id", "")
+            # Credit type is the alphabetic prefix
+            credit_type = "".join(c for c in class_id if c.isalpha())
+            if not credit_type:
+                credit_type = "UNKNOWN"
+
+            if credit_type not in summary_by_type:
+                summary_by_type[credit_type] = {
+                    "credit_type": credit_type,
+                    "batch_count": 0,
+                    "total_issued": 0.0,
+                    "total_tradable": 0.0,
+                    "total_retired": 0.0,
+                    "total_cancelled": 0.0,
+                    "class_ids": set(),
+                    "project_ids": set(),
+                }
+
+            summary_by_type[credit_type]["batch_count"] += 1
+
+            # Parse supply amounts (they come as strings)
+            def parse_amount(val: Any) -> float:
+                if val is None:
+                    return 0.0
+                try:
+                    return float(val)
+                except (ValueError, TypeError):
+                    return 0.0
+
+            # Get supply info from batch
+            supply = batch.get("supply", {}) if isinstance(batch.get("supply"), dict) else {}
+            summary_by_type[credit_type]["total_issued"] += parse_amount(
+                batch.get("total_amount") or supply.get("total_amount")
+            )
+            summary_by_type[credit_type]["total_tradable"] += parse_amount(
+                batch.get("tradable_amount") or supply.get("tradable_amount")
+            )
+            summary_by_type[credit_type]["total_retired"] += parse_amount(
+                batch.get("retired_amount") or supply.get("retired_amount")
+            )
+            summary_by_type[credit_type]["total_cancelled"] += parse_amount(
+                batch.get("cancelled_amount") or supply.get("cancelled_amount")
+            )
+            summary_by_type[credit_type]["class_ids"].add(class_id)
+            if batch.get("project_id"):
+                summary_by_type[credit_type]["project_ids"].add(batch["project_id"])
+
+        # Convert sets to counts for JSON serialization
+        summary_list = []
+        for type_data in summary_by_type.values():
+            type_data["unique_classes"] = len(type_data.pop("class_ids"))
+            type_data["unique_projects"] = len(type_data.pop("project_ids"))
+            summary_list.append(type_data)
+
+        # Sort by total issued descending
+        summary_list.sort(key=lambda x: x["total_issued"], reverse=True)
+
+        response_data = {
+            "summary": summary_list,
+            "batches_analyzed": len(batches),
+            "total_batches": total_batches,
+            "aggregation": {
+                "method": "by_credit_type",
+                "metrics": ["total_issued", "total_tradable", "total_retired", "total_cancelled"],
+            },
+        }
+
+        trace = create_tool_trace(
+            tool="list_credit_batches_summary",
+            params={"summary": True, "fetch_all": fetch_all},
+            data_source=DataSource.ON_CHAIN,
+            duration_ms=(time.time() - start_time) * 1000
+        )
+        add_tool_trace(trace)
+
+        return create_envelope(
+            data=response_data,
+            request_id=get_request_id(),
+            data_source=DataSource.ON_CHAIN,
+            warnings=warnings if warnings else None,
+        )
+
+    # Standard mode: return paginated batches
     result = await credit_tools.list_credit_batches(limit, offset)
 
     if "error" in result:

@@ -59,8 +59,28 @@ Guided workflows for common tasks:
 - Configurable caching layer
 - Type-safe Pydantic models
 - Async/await for performance
-- Comprehensive error handling
+- Comprehensive error handling with retryability signals
 - Health monitoring and metrics
+
+### 🔄 **API Resilience (v3.1)**
+
+The client includes hardened retry/backoff logic:
+
+- **Transient errors** (5xx, 429, timeouts) are automatically retried with exponential backoff + jitter
+- **Client errors** (4xx except 429) fail immediately without wasting retry attempts
+- All errors include `retryable` and `retry_after_ms` fields for downstream clients
+- `fetch_all_pages()` helper eliminates agent-side pagination loops
+
+### 📊 **Summary Mode**
+
+The `/ecocredits/batches` endpoint supports aggregation:
+
+```bash
+# Get summary by credit type instead of paginating through all batches
+curl "https://regen.gaiaai.xyz/regen-api/ecocredits/batches?summary=true&fetch_all=true"
+```
+
+Returns totals for issued/tradable/retired credits by type, reducing common multi-page loops.
 
 ## Installation
 

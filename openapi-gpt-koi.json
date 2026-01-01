@@ -2728,26 +2728,105 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "query_type": {
-                      "type": "string"
-                    },
-                    "results": {
-                      "type": "array",
-                      "items": {
-                        "type": "object"
-                      },
-                      "description": "Query results (structure depends on query_type)"
+                    "data": {
+                      "type": "object",
+                      "description": "Entity query payload (shape depends on query_type)",
+                      "properties": {
+                        "query_type": {
+                          "type": "string"
+                        },
+                        "query_label": {
+                          "type": "string"
+                        },
+                        "winner": {
+                          "type": "object"
+                        },
+                        "alternatives": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "is_polysemy": {
+                          "type": "boolean"
+                        }
+                      }
                     },
                     "request_id": {
                       "type": "string"
+                    },
+                    "data_source": {
+                      "type": "string"
+                    },
+                    "citations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
                     },
                     "warnings": {
                       "type": "array",
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "as_of": {
+                      "type": "object"
+                    },
+                    "tool_trace": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
                     }
-                  }
+                  },
+                  "required": [
+                    "data",
+                    "request_id"
+                  ]
+                },
+                "example": {
+                  "data": {
+                    "query_type": "resolve",
+                    "query_label": "Ethereum",
+                    "variant_count": 3,
+                    "winner": {
+                      "uri": "https://regen.network/tech/b35599829c6dc565",
+                      "entity_text": "Ethereum",
+                      "entity_type": "TECHNOLOGY"
+                    },
+                    "alternatives": [
+                      {
+                        "uri": "https://regen.network/project/a3b7abd349ff09a5",
+                        "entity_text": "Ethereum",
+                        "entity_type": "PROJECT"
+                      }
+                    ],
+                    "is_polysemy": true
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440999",
+                  "data_source": "koi-derived",
+                  "citations": [],
+                  "warnings": [],
+                  "errors": [],
+                  "as_of": {
+                    "koi": {
+                      "corpus_version": "2026-01-01",
+                      "indexed_at": "2026-01-01T00:00:00Z"
+                    }
+                  },
+                  "tool_trace": [
+                    {
+                      "tool": "entity_resolve",
+                      "params_summary": "label=Ethereum,limit=5"
+                    }
+                  ]
                 }
               }
             }

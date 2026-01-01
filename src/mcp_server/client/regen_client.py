@@ -7,7 +7,9 @@ endpoint fallbacks, and proper error handling.
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Union
+import random
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -21,17 +23,84 @@ logger = logging.getLogger(__name__)
 
 class RegenClientError(Exception):
     """Base exception for Regen client errors."""
-    pass
+
+    def __init__(
+        self,
+        message: str,
+        retryable: bool = False,
+        retry_after_ms: Optional[int] = None,
+        status_code: Optional[int] = None,
+    ):
+        super().__init__(message)
+        self.message = message
+        self.retryable = retryable
+        self.retry_after_ms = retry_after_ms
+        self.status_code = status_code
 
 
 class NetworkError(RegenClientError):
-    """Network-related errors."""
-    pass
+    """Network-related errors (transient, retryable)."""
+
+    def __init__(
+        self,
+        message: str,
+        retry_after_ms: int = 5000,
+        status_code: Optional[int] = None,
+    ):
+        super().__init__(
+            message=message,
+            retryable=True,
+            retry_after_ms=retry_after_ms,
+            status_code=status_code,
+        )
 
 
 class ValidationError(RegenClientError):
-    """Data validation errors."""
-    pass
+    """Data validation errors (not retryable)."""
+
+    def __init__(self, message: str, status_code: Optional[int] = None):
+        super().__init__(
+            message=message,
+            retryable=False,
+            retry_after_ms=None,
+            status_code=status_code,
+        )
+
+
+class HttpClientError(RegenClientError):
+    """HTTP 4xx client errors (not retryable, except 429)."""
+
+    def __init__(
+        self,
+        message: str,
+        status_code: int,
+        retry_after_ms: Optional[int] = None,
+    ):
+        # 429 Too Many Requests is retryable
+        is_retryable = status_code == 429
+        super().__init__(
+            message=message,
+            retryable=is_retryable,
+            retry_after_ms=retry_after_ms if is_retryable else None,
+            status_code=status_code,
+        )
+
+
+class HttpServerError(RegenClientError):
+    """HTTP 5xx server errors (transient, retryable)."""
+
+    def __init__(
+        self,
+        message: str,
+        status_code: int,
+        retry_after_ms: int = 5000,
+    ):
+        super().__init__(
+            message=message,
+            retryable=True,
+            retry_after_ms=retry_after_ms,
+            status_code=status_code,
+        )
 
 
 class Pagination(BaseModel):
@@ -188,6 +257,25 @@ class RegenClient:
         
         return endpoint
     
+    def _is_retryable_status(self, status_code: int) -> bool:
+        """Check if HTTP status code is retryable.
+
+        Retryable: 429 (rate limit), 5xx (server errors)
+        Not retryable: 4xx (client errors, except 429)
+        """
+        return status_code == 429 or status_code >= 500
+
+    def _parse_retry_after(self, response: httpx.Response) -> Optional[int]:
+        """Parse Retry-After header into milliseconds."""
+        retry_after = response.headers.get("Retry-After")
+        if not retry_after:
+            return None
+        try:
+            # Retry-After can be seconds (integer) or HTTP-date
+            return int(retry_after) * 1000
+        except ValueError:
+            return None
+
     async def _make_request(
         self,
         path: str,
@@ -196,72 +284,268 @@ class RegenClient:
         method: str = "GET",
     ) -> Dict[str, Any]:
         """Make HTTP request with retry logic and endpoint fallback.
-        
+
+        Retry behavior:
+        - Retries on: timeout, connection errors, 429 (rate limit), 5xx (server errors)
+        - No retry on: 4xx client errors (except 429), validation errors
+        - Uses exponential backoff with jitter
+
         Args:
             path: API path to append to base URL
             endpoint_type: Type of endpoint to use ("rest" or "rpc")
             params: Query parameters
             method: HTTP method
-            
+
         Returns:
             Response JSON data
-            
+
         Raises:
-            NetworkError: If all endpoints fail
-            ValidationError: If response validation fails
+            NetworkError: If all endpoints fail (transient, retryable)
+            HttpClientError: For 4xx client errors (not retryable, except 429)
+            HttpServerError: For 5xx server errors (transient, retryable)
+            ValidationError: If response validation fails (not retryable)
         """
         client = await self._get_http_client()
-        last_exception = None
-        
+        last_exception: Optional[Exception] = None
+        last_status_code: Optional[int] = None
+
         # Try each endpoint with retries
         endpoints = self.rest_endpoints if endpoint_type == "rest" else self.rpc_endpoints
-        
+
         for endpoint_idx in range(len(endpoints)):
             endpoint = self._get_next_endpoint(endpoint_type)
             url = urljoin(endpoint, path)
-            
+
             for retry in range(self.max_retries):
                 try:
                     logger.debug(f"Making request to {url} (attempt {retry + 1}/{self.max_retries})")
-                    
+
                     response = await client.request(
                         method=method,
                         url=url,
                         params=params,
                     )
-                    
-                    # Check for HTTP errors
-                    if response.status_code >= 400:
-                        raise httpx.HTTPStatusError(
-                            f"HTTP {response.status_code}", 
-                            request=response.request, 
-                            response=response
+
+                    status_code = response.status_code
+
+                    # Success - parse and return
+                    if status_code < 400:
+                        try:
+                            data = response.json()
+                            logger.debug(f"Successfully received response from {endpoint}")
+                            return data
+                        except Exception as e:
+                            raise ValidationError(f"Failed to parse JSON response: {e}")
+
+                    # Handle HTTP errors based on status code
+                    last_status_code = status_code
+                    retry_after_ms = self._parse_retry_after(response)
+
+                    # 4xx Client errors (except 429) - don't retry, fail immediately
+                    if 400 <= status_code < 500 and status_code != 429:
+                        error_body = ""
+                        try:
+                            error_body = response.text[:200]
+                        except Exception:
+                            pass
+                        raise HttpClientError(
+                            message=f"HTTP {status_code}: {error_body}",
+                            status_code=status_code,
                         )
-                    
-                    # Parse JSON response
-                    try:
-                        data = response.json()
-                        logger.debug(f"Successfully received response from {endpoint}")
-                        return data
-                    except Exception as e:
-                        raise ValidationError(f"Failed to parse JSON response: {e}")
-                
-                except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError) as e:
+
+                    # 429 or 5xx - retryable errors
+                    if self._is_retryable_status(status_code):
+                        error_msg = f"HTTP {status_code}"
+                        if status_code == 429:
+                            error_msg = "Rate limited (429)"
+                        last_exception = HttpServerError(
+                            message=error_msg,
+                            status_code=status_code,
+                            retry_after_ms=retry_after_ms or 5000,
+                        )
+                        logger.warning(f"Retryable error for {url} (attempt {retry + 1}): {error_msg}")
+
+                        if retry < self.max_retries - 1:
+                            # Use Retry-After if available, otherwise exponential backoff with jitter
+                            if retry_after_ms:
+                                delay = retry_after_ms / 1000.0
+                            else:
+                                base_delay = self.retry_delay * (2 ** retry)
+                                jitter = random.uniform(0, 0.1 * base_delay)
+                                delay = base_delay + jitter
+                            await asyncio.sleep(delay)
+                            continue
+
+                except (httpx.TimeoutException, httpx.ConnectError) as e:
+                    # Network/timeout errors are retryable
                     last_exception = e
-                    logger.warning(f"Request failed for {url} (attempt {retry + 1}): {e}")
-                    
+                    logger.warning(f"Connection error for {url} (attempt {retry + 1}): {e}")
+
                     if retry < self.max_retries - 1:
-                        # Exponential backoff with jitter
-                        delay = self.retry_delay * (2 ** retry) 
-                        await asyncio.sleep(delay)
-                    
+                        base_delay = self.retry_delay * (2 ** retry)
+                        jitter = random.uniform(0, 0.1 * base_delay)
+                        await asyncio.sleep(base_delay + jitter)
+                        continue
+
+                except (HttpClientError, ValidationError):
+                    # Non-retryable errors - propagate immediately
+                    raise
+
                 except Exception as e:
-                    # Non-retryable error
+                    # Unexpected errors - wrap and propagate
                     raise NetworkError(f"Unexpected error for {url}: {e}")
-        
+
+            # All retries for this endpoint exhausted, try next endpoint
+
         # All endpoints and retries failed
+        if last_status_code and last_status_code >= 500:
+            raise HttpServerError(
+                message=f"All endpoints failed. Last error: {last_exception}",
+                status_code=last_status_code,
+                retry_after_ms=5000,
+            )
         raise NetworkError(f"All endpoints failed. Last error: {last_exception}")
-    
+
+    async def fetch_all_pages(
+        self,
+        path: str,
+        params: Optional[Dict[str, Any]] = None,
+        endpoint_type: str = "rest",
+        page_size: int = 100,
+        max_pages: int = 100,
+        max_items: Optional[int] = None,
+        item_key: Optional[str] = None,
+        extract_items: Optional[Callable[[Dict[str, Any]], List[Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Fetch all pages from a paginated endpoint.
+
+        This helper iteratively requests pages until exhausted or limits reached.
+        Designed to replace agent-side pagination loops.
+
+        Args:
+            path: API path to query
+            params: Base query parameters (pagination params will be added)
+            endpoint_type: Type of endpoint ("rest" or "rpc")
+            page_size: Number of items per page (default 100)
+            max_pages: Hard cap on number of pages to fetch (default 100, safety limit)
+            max_items: Optional cap on total items to collect
+            item_key: Key in response containing items list (e.g., "batches", "projects")
+                      If not provided, attempts auto-detection
+            extract_items: Optional callback to extract items and determine if more pages exist.
+                          Signature: fn(response) -> List[items]
+                          If not provided, uses standard Cosmos pagination
+
+        Returns:
+            Dict with:
+                items: List of all collected items
+                pages_fetched: Number of pages fetched
+                exhausted: True if all pages were fetched, False if capped
+                total: Total count if available from API
+                warnings: List of any issues encountered
+
+        Raises:
+            NetworkError: If request fails
+            HttpClientError: For 4xx client errors
+            HttpServerError: For 5xx server errors
+        """
+        all_items: List[Any] = []
+        pages_fetched = 0
+        exhausted = False
+        total: Optional[int] = None
+        warnings: List[str] = []
+
+        # Common item keys for Cosmos/Regen APIs
+        known_item_keys = [
+            "batches", "projects", "classes", "credit_types",
+            "baskets", "balances", "sell_orders", "accounts",
+            "proposals", "votes", "deposits", "validators",
+            "supply", "metadatas", "denom_owners", "slashes",
+            "allowed_denoms",
+        ]
+
+        base_params = dict(params) if params else {}
+        offset = 0
+
+        while pages_fetched < max_pages:
+            # Build pagination params
+            page_params = {
+                **base_params,
+                "pagination.limit": str(page_size),
+                "pagination.offset": str(offset),
+                "pagination.count_total": "true",
+            }
+
+            # Fetch page
+            response = await self._make_request(
+                path=path,
+                endpoint_type=endpoint_type,
+                params=page_params,
+            )
+
+            pages_fetched += 1
+
+            # Extract items using callback or auto-detect
+            if extract_items:
+                page_items = extract_items(response)
+            else:
+                # Auto-detect item key
+                detected_key = item_key
+                if not detected_key:
+                    for key in known_item_keys:
+                        if key in response and isinstance(response[key], list):
+                            detected_key = key
+                            break
+
+                if detected_key:
+                    page_items = response.get(detected_key, [])
+                else:
+                    # Fallback: look for any list in response
+                    page_items = []
+                    for key, value in response.items():
+                        if isinstance(value, list) and key != "pagination":
+                            page_items = value
+                            break
+
+            all_items.extend(page_items)
+
+            # Extract total from pagination if available
+            pagination_data = response.get("pagination", {})
+            if pagination_data.get("total") and total is None:
+                try:
+                    total = int(pagination_data["total"])
+                except (ValueError, TypeError):
+                    pass
+
+            # Check if we should continue
+            has_next = pagination_data.get("next_key") is not None
+            items_this_page = len(page_items)
+
+            # Check max_items cap
+            if max_items and len(all_items) >= max_items:
+                all_items = all_items[:max_items]
+                warnings.append(f"MAX_ITEMS_REACHED: Capped at {max_items} items")
+                break
+
+            # Check if exhausted
+            if not has_next or items_this_page == 0:
+                exhausted = True
+                break
+
+            # Prepare for next page
+            offset += page_size
+
+        # Check if we hit max_pages
+        if pages_fetched >= max_pages and not exhausted:
+            warnings.append(f"MAX_PAGES_REACHED: Stopped after {max_pages} pages")
+
+        return {
+            "items": all_items,
+            "pages_fetched": pages_fetched,
+            "exhausted": exhausted,
+            "total": total,
+            "warnings": warnings,
+        }
+
     async def query_baskets(self, pagination: Optional[Pagination] = None) -> Dict[str, Any]:
         """Query all ecocredit baskets on Regen Network.
         
