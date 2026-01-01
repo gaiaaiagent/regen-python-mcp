@@ -2667,7 +2667,7 @@
           "Ledger - Ecocredits"
         ],
         "summary": "List credit batches",
-        "description": "List issued credit batches with vintage dates and supply info.\n\nOptions:\n- Default: Returns paginated list of individual batches\n- ?summary=true: Returns aggregate summary by credit type (totals for issued/tradable/retired)\n- ?summary=true&fetch_all=true: Fetches all pages to compute complete summary totals\n\nThe summary mode is designed to reduce agent-side pagination loops for common analytics.",
+        "description": "List issued credit batches (paginated). Options: summary=true returns aggregates by credit type; summary=true&fetch_all=true scans all pages (capped) for complete totals.",
         "operationId": "list_credit_batches",
         "parameters": [
           {
