@@ -1,0 +1,271 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Regen Network API (Experiment >30 ops)",
+    "description": "Experimental spec intentionally containing >30 operations to test Custom GPT Action limits. Runtime correctness is not required.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://registry.regen.gaiaai.xyz"
+    }
+  ],
+  "paths": {
+    "/regen-api/summary": {
+      "get": {
+        "summary": "Summary",
+        "description": "Test op.",
+        "operationId": "exp_over30_get_api_summary",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/ecocredits/types": {
+      "get": {
+        "summary": "Credit types",
+        "description": "Test op.",
+        "operationId": "exp_over30_list_credit_types",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/ecocredits/classes": {
+      "get": {
+        "summary": "Credit classes",
+        "description": "Test op.",
+        "operationId": "exp_over30_list_credit_classes",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/ecocredits/projects": {
+      "get": {
+        "summary": "Projects",
+        "description": "Test op.",
+        "operationId": "exp_over30_list_projects",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/ecocredits/batches": {
+      "get": {
+        "summary": "Batches",
+        "description": "Test op.",
+        "operationId": "exp_over30_list_credit_batches",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/marketplace/orders": {
+      "get": {
+        "summary": "Orders",
+        "description": "Test op.",
+        "operationId": "exp_over30_query_marketplace_orders",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/marketplace/denoms": {
+      "get": {
+        "summary": "Denoms",
+        "description": "Test op.",
+        "operationId": "exp_over30_list_allowed_denoms",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/baskets": {
+      "get": {
+        "summary": "Baskets",
+        "description": "Test op.",
+        "operationId": "exp_over30_list_baskets",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/baskets/fee": {
+      "get": {
+        "summary": "Basket fee",
+        "description": "Test op.",
+        "operationId": "exp_over30_get_basket_fee",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/baskets/{denom}": {
+      "get": {
+        "summary": "Basket details",
+        "description": "Test op.",
+        "operationId": "exp_over30_get_basket_details",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/bank/accounts": {
+      "get": {
+        "summary": "Accounts",
+        "description": "Test op.",
+        "operationId": "exp_over30_query_bank_accounts",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/bank/balances/{address}": {
+      "get": {
+        "summary": "Balances",
+        "description": "Test op.",
+        "operationId": "exp_over30_get_account_balances",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/bank/supply": {
+      "get": {
+        "summary": "Supply",
+        "description": "Test op.",
+        "operationId": "exp_over30_query_token_supply",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/bank/metadata": {
+      "get": {
+        "summary": "Token metadata",
+        "description": "Test op.",
+        "operationId": "exp_over30_query_token_metadata",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/bank/params": {
+      "get": {
+        "summary": "Bank params",
+        "description": "Test op.",
+        "operationId": "exp_over30_get_bank_params",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/distribution/pool": {
+      "get": {
+        "summary": "Community pool",
+        "description": "Test op.",
+        "operationId": "exp_over30_get_community_pool",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/distribution/validator/{address}": {
+      "get": {
+        "summary": "Validator distribution",
+        "description": "Test op.",
+        "operationId": "exp_over30_get_validator_distribution",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/distribution/delegator/{address}": {
+      "get": {
+        "summary": "Delegator distribution",
+        "description": "Test op.",
+        "operationId": "exp_over30_get_delegator_distribution",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/distribution/params": {
+      "get": {
+        "summary": "Distribution params",
+        "description": "Test op.",
+        "operationId": "exp_over30_get_distribution_params",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/governance/proposals": {
+      "get": {
+        "summary": "Governance proposals",
+        "description": "Test op.",
+        "operationId": "exp_over30_query_governance_proposals",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/governance/proposal/{id}/full": {
+      "get": {
+        "summary": "Proposal full",
+        "description": "Test op.",
+        "operationId": "exp_over30_get_proposal_full_details",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/governance/params": {
+      "get": {
+        "summary": "Governance params",
+        "description": "Test op.",
+        "operationId": "exp_over30_get_governance_params",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/analytics/trends": {
+      "get": {
+        "summary": "Market trends",
+        "description": "Test op.",
+        "operationId": "exp_over30_analyze_market_trends",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/analytics/portfolio/{address}": {
+      "get": {
+        "summary": "Portfolio impact",
+        "description": "Test op.",
+        "operationId": "exp_over30_analyze_portfolio_impact",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/regen-api/analytics/compare": {
+      "post": {
+        "summary": "Compare methodologies",
+        "description": "Test op.",
+        "operationId": "exp_over30_compare_credit_methodologies",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/koi/query": {
+      "post": {
+        "summary": "KOI query",
+        "description": "Test op.",
+        "operationId": "exp_over30_koi_semantic_search",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/koi/graph": {
+      "post": {
+        "summary": "KOI graph",
+        "description": "Test op.",
+        "operationId": "exp_over30_koi_graph_query",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/koi/entity": {
+      "post": {
+        "summary": "KOI entity",
+        "description": "Test op.",
+        "operationId": "exp_over30_koi_entity_query",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/koi/weekly-digest": {
+      "get": {
+        "summary": "KOI weekly digest",
+        "description": "Test op.",
+        "operationId": "exp_over30_koi_weekly_digest",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/digests/": {
+      "get": {
+        "summary": "Digests UI",
+        "description": "Filler op to exceed 30.",
+        "operationId": "exp_over30_digests_ui",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/digests/api": {
+      "get": {
+        "summary": "Digests API",
+        "description": "Filler op to exceed 30.",
+        "operationId": "exp_over30_digests_api",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/sse": {
+      "get": {
+        "summary": "SSE",
+        "description": "Filler op to exceed 30.",
+        "operationId": "exp_over30_sse",
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  }
+}

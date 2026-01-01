@@ -70,6 +70,21 @@ def list_operations(spec: dict[str, Any]) -> list[tuple[str, str, str]]:
     return sorted(operations, key=lambda x: (x[1], x[0]))
 
 
+def filter_paths(spec: dict[str, Any], predicate) -> dict[str, Any]:
+    """Return a shallow copy of spec with only paths matching predicate(path, methods)."""
+    out = dict(spec)
+    out["paths"] = {}
+    for path, methods in spec.get("paths", {}).items():
+        if predicate(path, methods):
+            out["paths"][path] = methods
+    return out
+
+
+def set_single_server(spec: dict[str, Any], url: str, description: str) -> None:
+    """Set a single server URL for an OpenAPI spec."""
+    spec["servers"] = [{"url": url, "description": description}]
+
+
 def get_consolidated_entity_endpoint() -> dict[str, Any]:
     """
     Return the consolidated POST /api/koi/entity endpoint definition.
@@ -82,12 +97,8 @@ def get_consolidated_entity_endpoint() -> dict[str, Any]:
             "tags": ["Knowledge - Entity"],
             "summary": "Entity relationship queries",
             "description": (
-                "Query entity relationships in the knowledge graph. "
-                "Use query_type to select the operation:\n"
-                "- **resolve**: Resolve an ambiguous label to canonical entity URIs with confidence scores\n"
-                "- **neighborhood**: Get the graph neighborhood of an entity (direct relationships and connected entities)\n"
-                "- **documents**: Get documents associated with an entity\n\n"
-                "For resolve/neighborhood/documents, provide either 'label' (will be resolved) or 'uri' (if known from previous resolve)."
+                "Entity graph query. Set query_type to one of: resolve | neighborhood | documents. "
+                "Provide label (to resolve) or uri (if already known)."
             ),
             "operationId": "koi_entity_query",
             "requestBody": {
@@ -160,6 +171,18 @@ def get_consolidated_entity_endpoint() -> dict[str, Any]:
             }
         }
     }
+
+
+def ensure_koi_health_trailing_slash(spec: dict[str, Any]) -> None:
+    """
+    KOI health responds at /api/koi/health/ and redirects from /api/koi/health.
+    Some GPT Action callers do not reliably follow redirects, so model /api/koi/health/.
+    """
+    old_path = "/api/koi/health"
+    new_path = "/api/koi/health/"
+
+    if old_path in spec.get("paths", {}) and new_path not in spec["paths"]:
+        spec["paths"][new_path] = spec["paths"].pop(old_path)
 
 
 def generate_gpt_schema(combined_spec: dict[str, Any]) -> dict[str, Any]:
@@ -235,6 +258,26 @@ def generate_full_schema(combined_spec: dict[str, Any]) -> dict[str, Any]:
     return full_spec
 
 
+def generate_split_action_schemas(
+    combined_spec: dict[str, Any],
+    gpt_spec: dict[str, Any],
+    full_spec: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """
+    Generate two Action-friendly schemas (each <=30 ops) for a two-Action GPT setup:
+    - Ledger Action: /regen-api/* on https://regen.gaiaai.xyz
+    - KOI Action: /api/koi/* on https://registry.regen.gaiaai.xyz
+    """
+    ledger_spec = filter_paths(gpt_spec, lambda path, methods: path.startswith("/regen-api/"))
+    set_single_server(ledger_spec, "https://regen.gaiaai.xyz", "Production API (Ledger Action)")
+
+    # KOI Action: keep the GPT-safe KOI surface (no stats/health/debug).
+    koi_spec = filter_paths(gpt_spec, lambda path, methods: path.startswith("/api/koi/"))
+    set_single_server(koi_spec, "https://registry.regen.gaiaai.xyz", "Production API (KOI Action)")
+
+    return ledger_spec, koi_spec
+
+
 def print_operation_summary(spec: dict[str, Any], name: str) -> None:
     """Print a summary of operations in the spec."""
     ops = list_operations(spec)
@@ -259,6 +302,8 @@ def main() -> None:
     combined_path = repo_root / "openapi-combined.json"
     gpt_path = repo_root / "openapi-gpt.json"
     full_path = repo_root / "openapi-full.json"
+    ledger_action_path = repo_root / "openapi-gpt-ledger.json"
+    koi_action_path = repo_root / "openapi-gpt-koi.json"
 
     print("=" * 60)
     print("OpenAPI Schema Generator")
@@ -282,6 +327,15 @@ def main() -> None:
     full_spec = generate_full_schema(combined_spec)
     save_openapi_spec(full_spec, full_path)
     print_operation_summary(full_spec, "Full Schema (openapi-full.json)")
+
+    # Generate split Action schemas (two Action domains)
+    print("\n" + "-" * 60)
+    print("Generating split Action schemas (ledger-only + koi-only)...")
+    ledger_spec, koi_spec = generate_split_action_schemas(combined_spec, gpt_spec, full_spec)
+    save_openapi_spec(ledger_spec, ledger_action_path)
+    save_openapi_spec(koi_spec, koi_action_path)
+    print_operation_summary(ledger_spec, "Ledger Action Schema (openapi-gpt-ledger.json)")
+    print_operation_summary(koi_spec, "KOI Action Schema (openapi-gpt-koi.json)")
 
     # Summary
     gpt_count = count_operations(gpt_spec)

@@ -6,8 +6,9 @@ Focuses on the most useful Regen Network queries for a Custom GPT.
 
 import sys
 import logging
+import asyncio
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
@@ -15,6 +16,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import uvicorn
+import httpx
 
 from mcp_server.tools import (
     bank_tools,
@@ -28,6 +30,119 @@ from mcp_server.tools import (
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Off-chain Metadata Enrichment Configuration (Session E)
+# =============================================================================
+KOI_API_ENDPOINT = "https://regen.gaiaai.xyz/api/koi"
+ENRICHMENT_MAX_ITEMS = 10  # Cap enriched items per response
+ENRICHMENT_TIMEOUT_SECONDS = 5.0  # Strict timeout per enrichment
+METADATA_IRI_PREFIX = "regen:"  # Only enrich Regen IRIs
+
+
+async def derive_hectares_for_iri(
+    iri: str,
+    client: httpx.AsyncClient,
+    force_refresh: bool = False
+) -> Optional[Dict[str, Any]]:
+    """
+    Derive hectares from a metadata IRI via the KOI API.
+    Enforces "no citation, no metric" policy.
+
+    Returns None if derivation fails (metric should not be reported).
+    """
+    if not iri or not iri.startswith(METADATA_IRI_PREFIX):
+        return None
+
+    try:
+        response = await client.post(
+            f"{KOI_API_ENDPOINT}/metadata/hectares",
+            json={"iri": iri, "force_refresh": force_refresh},
+            timeout=ENRICHMENT_TIMEOUT_SECONDS
+        )
+
+        if response.status_code != 200:
+            # Blocked or failed - no metric
+            logger.debug(f"Hectares derivation blocked for {iri}: {response.status_code}")
+            return None
+
+        data = response.json()
+        # Unwrap KOI envelope if present
+        if "data" in data and "request_id" in data:
+            data = data["data"]
+
+        return {
+            "hectares": data.get("hectares"),
+            "unit": data.get("unit", "ha"),
+            "derivation": data.get("derivation", {}),
+            "citation": data.get("citations", [{}])[0] if data.get("citations") else None
+        }
+
+    except httpx.TimeoutException:
+        logger.warning(f"Timeout deriving hectares for {iri}")
+        return None
+    except Exception as e:
+        logger.warning(f"Error deriving hectares for {iri}: {e}")
+        return None
+
+
+async def enrich_projects_with_offchain_metrics(
+    projects: List[Dict[str, Any]],
+    force_refresh: bool = False
+) -> tuple[List[Dict[str, Any]], List[str]]:
+    """
+    Enrich projects with off-chain hectares metrics.
+    Only enriches the first N projects to prevent long loops.
+
+    Returns:
+        tuple: (enriched_projects, warnings)
+    """
+    warnings: List[str] = []
+    enriched_count = 0
+
+    async with httpx.AsyncClient() as client:
+        for i, project in enumerate(projects):
+            # Cap enrichment to prevent long loops
+            if enriched_count >= ENRICHMENT_MAX_ITEMS:
+                warnings.append(
+                    f"ENRICHMENT_CAPPED: Only first {ENRICHMENT_MAX_ITEMS} projects enriched"
+                )
+                break
+
+            metadata = project.get("metadata", "")
+            if not metadata or not metadata.startswith(METADATA_IRI_PREFIX):
+                continue
+
+            hectares_data = await derive_hectares_for_iri(
+                metadata, client, force_refresh
+            )
+
+            if hectares_data:
+                # Add offchain_metrics to project
+                project["offchain_metrics"] = {
+                    "hectares": hectares_data["hectares"],
+                    "unit": hectares_data["unit"],
+                    "derivation": {
+                        "iri": metadata,
+                        "rid": hectares_data["derivation"].get("rid"),
+                        "resolver_url": hectares_data["derivation"].get("resolver_url"),
+                        "content_hash": hectares_data["derivation"].get("content_hash"),
+                        "json_pointer": hectares_data["derivation"].get("json_pointer"),
+                        "expected_unit": hectares_data["derivation"].get("expected_unit"),
+                    }
+                }
+                if hectares_data["citation"]:
+                    project["offchain_citations"] = [hectares_data["citation"]]
+                enriched_count += 1
+            else:
+                # No valid derivation available (blocked)
+                # Do NOT add any metric - "no citation, no metric"
+                pass
+
+    if enriched_count > 0:
+        logger.info(f"Enriched {enriched_count} projects with offchain metrics")
+
+    return projects, warnings
 
 app = FastAPI(
     title="Regen Network API",
@@ -87,11 +202,31 @@ async def list_credit_classes(
 async def list_projects(
     limit: int = Query(100, ge=1, le=500, description="Max results"),
     offset: int = Query(0, ge=0, description="Skip results"),
+    include_offchain_metrics: bool = Query(
+        False,
+        description="If true, enrich projects with off-chain hectares from metadata IRIs. "
+                    "Only enriches projects with valid Regen metadata IRIs. "
+                    "Max 10 projects enriched per request. "
+                    "Enforces 'no citation, no metric' - hectares only returned with full provenance."
+    ),
 ):
-    """List ecological projects that generate credits."""
+    """List ecological projects that generate credits.
+
+    When include_offchain_metrics=true, projects with Regen metadata IRIs will be
+    enriched with hectares derived from the off-chain metadata resolver.
+    """
     result = await credit_tools.list_projects(limit, offset)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
+
+    # Opt-in enrichment (Part B)
+    if include_offchain_metrics and result.get("projects"):
+        projects = result["projects"]
+        enriched_projects, warnings = await enrich_projects_with_offchain_metrics(projects)
+        result["projects"] = enriched_projects
+        if warnings:
+            result["warnings"] = warnings
+
     return result
 
 

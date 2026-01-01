@@ -183,6 +183,24 @@ await client.call_tool("compare_credit_methodologies", {
 })
 ```
 
+## Using With ChatGPT Custom GPT Actions (OpenAPI)
+
+OpenAI Custom GPT Actions enforce a **maximum of 30 operations per OpenAPI spec**, and Action sets cannot include duplicate domains. This repo supports a **two-Action** setup:
+
+- **Ledger Action** (on-chain): upload `openapi-gpt-ledger.json` with server `https://regen.gaiaai.xyz` (25 ops, `/regen-api/*` only)
+- **KOI Action** (knowledge): upload `openapi-gpt-koi.json` with server `https://registry.regen.gaiaai.xyz` (4 ops, `/api/koi/*` only)
+
+To regenerate the GPT/Full + split Action specs deterministically:
+
+```bash
+python3 scripts/generate_openapi_schemas.py
+python3 scripts/validate_openapi_gpt.py --strict
+```
+
+Recommended instruction text for the GPT lives in:
+- `gpt-instructions.md`
+- `gpt-knowledge.md`
+
 ## Architecture
 
 ```

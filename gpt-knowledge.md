@@ -2,6 +2,15 @@
 
 This guide helps you serve users effectively by understanding what data lives where and how to find it.
 
+## Two Actions (Two Domains)
+
+This GPT has two API Actions, each with its own domain constraint:
+
+- **Ledger Action** (on-chain): `https://regen.gaiaai.xyz` (all `/regen-api/*` endpoints)
+- **KOI Action** (knowledge): `https://registry.regen.gaiaai.xyz` (all `/api/koi/*` endpoints)
+
+If a call fails without a `request_id`, assume the Action was not actually invoked and try again.
+
 ## Complete Endpoint Reference
 
 ### Ledger API (prefix: `/regen-api`)
@@ -41,7 +50,7 @@ This guide helps you serve users effectively by understanding what data lives wh
 
 **Analytics**
 - `GET /regen-api/analytics/trends` — Market trends
-- `GET /regen-api/analytics/compare` — Compare credits
+- `POST /regen-api/analytics/compare` — Compare credits
 - `GET /regen-api/analytics/portfolio/{address}` — Portfolio analysis
 
 **Utility**
@@ -51,9 +60,11 @@ This guide helps you serve users effectively by understanding what data lives wh
 
 - `GET /api/koi/weekly-digest` — Curated weekly activity summary
 - `POST /api/koi/query` — Search knowledge base (body: `{"question": "..."}`)
-- `GET /api/koi/graph` — Query codebase knowledge graph
-- `GET /api/koi/stats` — Knowledge base statistics
-- `GET /api/koi/health` — System health check
+- `POST /api/koi/graph` — Query codebase knowledge graph
+- `POST /api/koi/entity` — Entity queries (body includes `query_type`: `resolve|neighborhood|documents`)
+
+Notes:
+- `/api/koi/stats` and `/api/koi/health` are intentionally not exposed to the GPT Action surface.
 
 ## Decision Guide
 
@@ -110,13 +121,35 @@ Query `/regen-api/ecocredits/types` for current credit types — this data is li
 ## When Things Go Wrong
 
 **API returns error**
-→ Upstream blockchain nodes occasionally have issues. Acknowledge the temporary limitation and offer what you can from other sources.
+→ Check the `errors` array in the response:
+- If `retryable: true`, wait for `retry_after_ms` and try again (max 2-3 retries)
+- If `retryable: false`, the error is permanent (bad input, resource not found)
+- Acknowledge the limitation and offer what you can from other sources
+
+**Model didn’t actually call the Action**
+→ If you do not see a real response envelope with `request_id`, do not invent results. Call the Action again and return the raw JSON.
 
 **Data seems missing**
 → Some information exists in the knowledge base but not on-chain (or vice versa). Be transparent about where you looked.
 
 **Question spans both systems**
 → Combine sources. For "What carbon credits are for sale and what do they represent?" — check marketplace orders AND query knowledge base about the credit class.
+
+## Critical Distinction: Credit Quantities vs. Impact Claims
+
+**On-Chain Data (Authoritative)**
+- Credit batch quantities, tradable/retired amounts
+- Account balances, token supplies
+- Governance proposal status, vote tallies
+- These come from `/regen-api/*` endpoints
+
+**Off-Chain Data (Requires Citation)**
+- Impact claims: tCO₂e sequestered, hectares restored, species protected
+- Project narratives, methodology descriptions
+- Historical context, organizational information
+- These come from `/api/koi/*` endpoints
+
+**Rule**: Never present off-chain impact metrics as if they were on-chain verified quantities. Always cite the source document when presenting impact claims.
 
 ## The Ecosystem Context
 

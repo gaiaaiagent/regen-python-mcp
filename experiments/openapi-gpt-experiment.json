@@ -1,0 +1,208 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Regen Network API (Experiment)",
+    "description": "Minimal experimental API with 2 endpoints: API discovery and semantic search.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://registry.regen.gaiaai.xyz"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "DataSourceEnum": {
+        "type": "string",
+        "enum": ["on-chain", "koi-derived", "estimated", "cached", "metadata"]
+      },
+      "AsOf": {
+        "type": "object",
+        "properties": {
+          "chain_id": { "type": "string" },
+          "block_height": { "type": "integer" },
+          "corpus_version": { "type": "string" },
+          "indexed_at": { "type": "string" }
+        }
+      },
+      "ToolTrace": {
+        "type": "object",
+        "properties": {
+          "tool": { "type": "string" },
+          "params_summary": { "type": "string" },
+          "timestamp": { "type": "string" },
+          "data_source": { "$ref": "#/components/schemas/DataSourceEnum" },
+          "duration_ms": { "type": "number" }
+        },
+        "required": ["tool", "params_summary", "timestamp", "data_source"]
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "retryable": { "type": "boolean", "default": false }
+        },
+        "required": ["code", "message"]
+      },
+      "ApiCapabilities": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "capabilities": { "type": "object" }
+        },
+        "required": ["name", "capabilities"]
+      },
+      "KoiSearchResult": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "content": { "type": "string" },
+          "score": { "type": "number" },
+          "source": { "type": "string" },
+          "rid": { "type": "string" }
+        },
+        "required": ["title", "content", "score", "rid"]
+      },
+      "KoiSearchResponse": {
+        "type": "object",
+        "properties": {
+          "question": { "type": "string" },
+          "total_results": { "type": "integer" },
+          "confidence": { "type": "number" },
+          "execution_time": { "type": "number" },
+          "results": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/KoiSearchResult" }
+          }
+        },
+        "required": ["question", "total_results", "results"]
+      },
+      "Response_ApiCapabilities": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/ApiCapabilities" },
+          "request_id": { "type": "string" },
+          "data_source": { "$ref": "#/components/schemas/DataSourceEnum" },
+          "as_of": { "$ref": "#/components/schemas/AsOf" },
+          "tool_trace": { "type": "array", "items": { "$ref": "#/components/schemas/ToolTrace" } },
+          "warnings": { "type": "array", "items": { "type": "string" } },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } }
+        },
+        "required": ["data", "request_id"]
+      },
+      "Response_KoiSearch": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/KoiSearchResponse" },
+          "request_id": { "type": "string" },
+          "data_source": { "$ref": "#/components/schemas/DataSourceEnum" },
+          "as_of": { "$ref": "#/components/schemas/AsOf" },
+          "tool_trace": { "type": "array", "items": { "$ref": "#/components/schemas/ToolTrace" } },
+          "warnings": { "type": "array", "items": { "type": "string" } },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } }
+        },
+        "required": ["data", "request_id"]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": { "type": "string" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } }
+        },
+        "required": ["request_id", "errors"]
+      }
+    }
+  },
+  "paths": {
+    "/regen-api/summary": {
+      "get": {
+        "tags": ["Discovery"],
+        "summary": "API capabilities summary",
+        "description": "Get API capabilities. Call first to discover available endpoints.",
+        "operationId": "exp_get_api_summary",
+        "responses": {
+          "200": {
+            "description": "API capabilities by category",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Response_ApiCapabilities" }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/koi/query": {
+      "post": {
+        "tags": ["Knowledge"],
+        "summary": "Semantic knowledge search",
+        "description": "Search the knowledge base using hybrid semantic search. Returns documents with scores and citations.",
+        "operationId": "exp_koi_semantic_search",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["question"],
+                "properties": {
+                  "question": {
+                    "type": "string",
+                    "description": "Natural language search query"
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50,
+                    "default": 10,
+                    "description": "Max results to return"
+                  }
+                }
+              },
+              "example": {
+                "question": "What is Regen Registry?",
+                "limit": 10
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results with scores",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Response_KoiSearch" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

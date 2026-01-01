@@ -11,6 +11,2389 @@
       "description": "Production API"
     }
   ],
+  "components": {
+    "schemas": {
+      "DataSourceEnum": {
+        "type": "string",
+        "enum": [
+          "on-chain",
+          "koi-derived",
+          "estimated",
+          "cached",
+          "metadata"
+        ],
+        "description": "Data source classification"
+      },
+      "OnChainAsOf": {
+        "type": "object",
+        "properties": {
+          "chain_id": {
+            "type": "string",
+            "default": "regen-1",
+            "description": "Blockchain chain ID"
+          },
+          "block_height": {
+            "type": "integer",
+            "description": "Block height when data was queried"
+          },
+          "block_time": {
+            "type": "string",
+            "description": "Block timestamp (ISO 8601)"
+          }
+        }
+      },
+      "KoiAsOf": {
+        "type": "object",
+        "properties": {
+          "corpus_version": {
+            "type": "string",
+            "description": "KOI corpus version identifier"
+          },
+          "indexed_at": {
+            "type": "string",
+            "description": "When the KOI data was last indexed (ISO 8601)"
+          }
+        }
+      },
+      "MetadataAsOf": {
+        "type": "object",
+        "properties": {
+          "iri": {
+            "type": "string",
+            "description": "Metadata IRI that was resolved"
+          },
+          "resolved_at": {
+            "type": "string",
+            "description": "When metadata was resolved (ISO 8601)"
+          }
+        }
+      },
+      "AsOf": {
+        "type": "object",
+        "description": "Data freshness metadata",
+        "properties": {
+          "on_chain": {
+            "$ref": "#/components/schemas/OnChainAsOf"
+          },
+          "koi": {
+            "$ref": "#/components/schemas/KoiAsOf"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/MetadataAsOf"
+          }
+        }
+      },
+      "ToolTrace": {
+        "type": "object",
+        "description": "Trace entry for operations executed",
+        "properties": {
+          "tool": {
+            "type": "string",
+            "description": "Tool or operation name"
+          },
+          "params_summary": {
+            "type": "string",
+            "description": "Redacted summary of params"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "When the tool was invoked (ISO 8601)"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "duration_ms": {
+            "type": "number",
+            "description": "Operation duration in milliseconds"
+          }
+        },
+        "required": [
+          "tool",
+          "params_summary",
+          "timestamp",
+          "data_source"
+        ]
+      },
+      "ApiError": {
+        "type": "object",
+        "description": "Structured error with retryability information",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Error code (e.g., 'GOVERNANCE_UNAVAILABLE')"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "retryable": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the client should retry"
+          },
+          "retry_after_ms": {
+            "type": "integer",
+            "description": "Suggested wait time before retry (ms)"
+          },
+          "details": {
+            "type": "object",
+            "description": "Additional error context"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "Citation": {
+        "type": "object",
+        "description": "Citation for KOI-derived data",
+        "properties": {
+          "rid": {
+            "type": "string",
+            "description": "KOI record ID"
+          },
+          "url": {
+            "type": "string",
+            "description": "Canonical URL to source"
+          },
+          "title": {
+            "type": "string",
+            "description": "Source title"
+          },
+          "excerpt": {
+            "type": "string",
+            "description": "Relevant excerpt/quote"
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "Whether the link has been verified"
+          },
+          "checked_at": {
+            "type": "string",
+            "description": "When link was last verified (ISO 8601)"
+          }
+        },
+        "required": [
+          "rid"
+        ]
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "description": "Standardized pagination metadata",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "default": 0,
+            "description": "Current offset"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 100,
+            "description": "Page size limit"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total number of items (if known)"
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "Whether more results exist"
+          },
+          "next_offset": {
+            "type": "integer",
+            "description": "Offset for next page (if has_more)"
+          }
+        }
+      },
+      "Coin": {
+        "type": "object",
+        "description": "Cosmos SDK coin representation",
+        "properties": {
+          "denom": {
+            "type": "string",
+            "description": "Token denomination"
+          },
+          "amount": {
+            "type": "string",
+            "description": "Token amount as string"
+          }
+        },
+        "required": [
+          "denom",
+          "amount"
+        ]
+      },
+      "CreditType": {
+        "type": "object",
+        "description": "Credit type information",
+        "properties": {
+          "abbreviation": {
+            "type": "string",
+            "description": "Credit type abbreviation (e.g., 'C')"
+          },
+          "name": {
+            "type": "string",
+            "description": "Full credit type name"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of measurement"
+          },
+          "precision": {
+            "type": "integer",
+            "description": "Decimal precision"
+          }
+        },
+        "required": [
+          "abbreviation",
+          "name",
+          "unit",
+          "precision"
+        ]
+      },
+      "CreditClass": {
+        "type": "object",
+        "description": "Credit class (methodology) information",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Class ID"
+          },
+          "admin": {
+            "type": "string",
+            "description": "Class administrator address"
+          },
+          "metadata": {
+            "type": "string",
+            "description": "Class metadata IRI"
+          },
+          "credit_type_abbrev": {
+            "type": "string",
+            "description": "Credit type abbreviation"
+          }
+        },
+        "required": [
+          "id",
+          "admin",
+          "metadata",
+          "credit_type_abbrev"
+        ]
+      },
+      "Project": {
+        "type": "object",
+        "description": "Ecological project information",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "admin": {
+            "type": "string",
+            "description": "Project administrator address"
+          },
+          "class_id": {
+            "type": "string",
+            "description": "Associated credit class ID"
+          },
+          "jurisdiction": {
+            "type": "string",
+            "description": "Project jurisdiction"
+          },
+          "metadata": {
+            "type": "string",
+            "description": "Project metadata IRI"
+          },
+          "reference_id": {
+            "type": "string",
+            "description": "External reference ID"
+          },
+          "hectares": {
+            "type": "number",
+            "description": "Project area in hectares (when include_offchain_metrics=true)"
+          },
+          "hectares_citation": {
+            "$ref": "#/components/schemas/Citation"
+          }
+        },
+        "required": [
+          "id",
+          "admin",
+          "class_id",
+          "jurisdiction",
+          "metadata"
+        ]
+      },
+      "CreditBatch": {
+        "type": "object",
+        "description": "Credit batch information",
+        "properties": {
+          "issuer": {
+            "type": "string",
+            "description": "Batch issuer address"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Associated project ID"
+          },
+          "denom": {
+            "type": "string",
+            "description": "Batch denomination"
+          },
+          "metadata": {
+            "type": "string",
+            "description": "Batch metadata IRI"
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Monitoring start date"
+          },
+          "end_date": {
+            "type": "string",
+            "description": "Monitoring end date"
+          },
+          "issuance_date": {
+            "type": "string",
+            "description": "Issuance date"
+          },
+          "open": {
+            "type": "boolean",
+            "description": "Whether batch is open for additional issuance"
+          }
+        },
+        "required": [
+          "issuer",
+          "project_id",
+          "denom",
+          "metadata",
+          "open"
+        ]
+      },
+      "SellOrder": {
+        "type": "object",
+        "description": "Marketplace sell order",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Sell order ID"
+          },
+          "seller": {
+            "type": "string",
+            "description": "Seller address"
+          },
+          "batch_denom": {
+            "type": "string",
+            "description": "Credit batch denomination"
+          },
+          "quantity": {
+            "type": "string",
+            "description": "Credit quantity for sale"
+          },
+          "ask_denom": {
+            "type": "string",
+            "description": "Ask denomination"
+          },
+          "ask_amount": {
+            "type": "string",
+            "description": "Ask amount per credit"
+          },
+          "disable_auto_retire": {
+            "type": "boolean",
+            "description": "Whether auto-retire is disabled"
+          },
+          "expiration": {
+            "type": "string",
+            "description": "Order expiration (ISO 8601)"
+          }
+        },
+        "required": [
+          "id",
+          "seller",
+          "batch_denom",
+          "quantity"
+        ]
+      },
+      "AllowedDenom": {
+        "type": "object",
+        "description": "Allowed denomination for marketplace payments",
+        "properties": {
+          "bank_denom": {
+            "type": "string",
+            "description": "Bank denomination"
+          },
+          "display_denom": {
+            "type": "string",
+            "description": "Display denomination"
+          },
+          "exponent": {
+            "type": "integer",
+            "description": "Decimal exponent"
+          }
+        },
+        "required": [
+          "bank_denom",
+          "display_denom",
+          "exponent"
+        ]
+      },
+      "Basket": {
+        "type": "object",
+        "description": "Ecocredit basket information",
+        "properties": {
+          "basket_denom": {
+            "type": "string",
+            "description": "Basket denomination"
+          },
+          "name": {
+            "type": "string",
+            "description": "Basket name"
+          },
+          "disable_auto_retire": {
+            "type": "boolean",
+            "description": "Whether auto-retire is disabled"
+          },
+          "credit_type_abbrev": {
+            "type": "string",
+            "description": "Credit type abbreviation"
+          },
+          "date_criteria": {
+            "type": "object",
+            "description": "Date acceptance criteria"
+          },
+          "exponent": {
+            "type": "integer",
+            "description": "Decimal exponent"
+          },
+          "curator": {
+            "type": "string",
+            "description": "Basket curator address"
+          }
+        },
+        "required": [
+          "basket_denom",
+          "name",
+          "credit_type_abbrev",
+          "curator"
+        ]
+      },
+      "BasketBalance": {
+        "type": "object",
+        "description": "Balance of credits in a basket",
+        "properties": {
+          "batch_denom": {
+            "type": "string",
+            "description": "Batch denomination"
+          },
+          "balance": {
+            "type": "string",
+            "description": "Balance amount"
+          }
+        },
+        "required": [
+          "batch_denom",
+          "balance"
+        ]
+      },
+      "AccountInfo": {
+        "type": "object",
+        "description": "Account information",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Account address"
+          },
+          "account_number": {
+            "type": "string",
+            "description": "Account number"
+          },
+          "sequence": {
+            "type": "string",
+            "description": "Account sequence"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      },
+      "TokenMetadata": {
+        "type": "object",
+        "description": "Token denomination metadata",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Token description"
+          },
+          "denom_units": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Denomination units"
+          },
+          "base": {
+            "type": "string",
+            "description": "Base denomination"
+          },
+          "display": {
+            "type": "string",
+            "description": "Display denomination"
+          },
+          "name": {
+            "type": "string",
+            "description": "Token name"
+          },
+          "symbol": {
+            "type": "string",
+            "description": "Token symbol"
+          }
+        },
+        "required": [
+          "base",
+          "display"
+        ]
+      },
+      "DistributionParams": {
+        "type": "object",
+        "description": "Distribution module parameters",
+        "properties": {
+          "community_tax": {
+            "type": "string",
+            "description": "Community tax rate"
+          },
+          "base_proposer_reward": {
+            "type": "string",
+            "description": "Base proposer reward"
+          },
+          "bonus_proposer_reward": {
+            "type": "string",
+            "description": "Bonus proposer reward"
+          },
+          "withdraw_addr_enabled": {
+            "type": "boolean",
+            "description": "Whether withdraw address changes are enabled"
+          }
+        }
+      },
+      "ValidatorDistribution": {
+        "type": "object",
+        "description": "Validator distribution information",
+        "properties": {
+          "operator_address": {
+            "type": "string",
+            "description": "Validator operator address"
+          },
+          "outstanding_rewards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Coin"
+            },
+            "description": "Outstanding rewards"
+          },
+          "commission": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Coin"
+            },
+            "description": "Commission"
+          },
+          "slashes": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Slashing events"
+          }
+        },
+        "required": [
+          "operator_address"
+        ]
+      },
+      "DelegatorDistribution": {
+        "type": "object",
+        "description": "Delegator distribution information",
+        "properties": {
+          "delegator_address": {
+            "type": "string",
+            "description": "Delegator address"
+          },
+          "rewards": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Rewards per validator"
+          },
+          "total": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Coin"
+            },
+            "description": "Total rewards"
+          },
+          "withdraw_address": {
+            "type": "string",
+            "description": "Withdraw address"
+          }
+        },
+        "required": [
+          "delegator_address"
+        ]
+      },
+      "GovernanceParams": {
+        "type": "object",
+        "description": "Governance module parameters",
+        "properties": {
+          "voting_params": {
+            "type": "object",
+            "description": "Voting parameters"
+          },
+          "deposit_params": {
+            "type": "object",
+            "description": "Deposit parameters"
+          },
+          "tally_params": {
+            "type": "object",
+            "description": "Tally parameters"
+          }
+        }
+      },
+      "Proposal": {
+        "type": "object",
+        "description": "Governance proposal",
+        "properties": {
+          "proposal_id": {
+            "type": "string",
+            "description": "Proposal ID"
+          },
+          "content": {
+            "type": "object",
+            "description": "Proposal content"
+          },
+          "status": {
+            "type": "string",
+            "description": "Proposal status"
+          },
+          "final_tally_result": {
+            "type": "object",
+            "description": "Final vote tally"
+          },
+          "submit_time": {
+            "type": "string",
+            "description": "Submission time"
+          },
+          "deposit_end_time": {
+            "type": "string",
+            "description": "Deposit end time"
+          },
+          "total_deposit": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Coin"
+            },
+            "description": "Total deposited"
+          },
+          "voting_start_time": {
+            "type": "string",
+            "description": "Voting start time"
+          },
+          "voting_end_time": {
+            "type": "string",
+            "description": "Voting end time"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "status"
+        ]
+      },
+      "ProposalFull": {
+        "type": "object",
+        "description": "Full proposal details with votes and deposits",
+        "properties": {
+          "proposal": {
+            "$ref": "#/components/schemas/Proposal"
+          },
+          "votes": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Votes on the proposal"
+          },
+          "deposits": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Deposits on the proposal"
+          },
+          "tally": {
+            "type": "object",
+            "description": "Current tally result"
+          }
+        },
+        "required": [
+          "proposal"
+        ]
+      },
+      "PortfolioAnalysis": {
+        "type": "object",
+        "description": "Portfolio impact analysis",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Analyzed address"
+          },
+          "analysis_type": {
+            "type": "string",
+            "description": "Type of analysis performed"
+          },
+          "total_credits": {
+            "type": "number",
+            "description": "Total credits held"
+          },
+          "credit_breakdown": {
+            "type": "object",
+            "description": "Breakdown by credit type"
+          },
+          "ecological_impact": {
+            "type": "object",
+            "description": "Ecological impact metrics"
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Portfolio recommendations"
+          }
+        },
+        "required": [
+          "address",
+          "analysis_type"
+        ]
+      },
+      "MarketTrends": {
+        "type": "object",
+        "description": "Market trends analysis",
+        "properties": {
+          "time_period": {
+            "type": "string",
+            "description": "Analysis time period"
+          },
+          "credit_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Analyzed credit types"
+          },
+          "trends": {
+            "type": "object",
+            "description": "Trend data by credit type"
+          },
+          "summary": {
+            "type": "object",
+            "description": "Summary statistics"
+          }
+        },
+        "required": [
+          "time_period"
+        ]
+      },
+      "MethodologyComparison": {
+        "type": "object",
+        "description": "Credit methodology comparison",
+        "properties": {
+          "class_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Compared class IDs"
+          },
+          "comparison": {
+            "type": "object",
+            "description": "Comparison results"
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Recommendations"
+          }
+        },
+        "required": [
+          "class_ids"
+        ]
+      },
+      "ApiCapabilities": {
+        "type": "object",
+        "description": "API capabilities summary",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "API name"
+          },
+          "description": {
+            "type": "string",
+            "description": "API description"
+          },
+          "capabilities": {
+            "type": "object",
+            "description": "Available API capabilities grouped by category"
+          }
+        },
+        "required": [
+          "name",
+          "capabilities"
+        ]
+      },
+      "KoiSearchResult": {
+        "type": "object",
+        "description": "Individual search result",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Document title"
+          },
+          "content": {
+            "type": "string",
+            "description": "Content excerpt"
+          },
+          "score": {
+            "type": "number",
+            "description": "Relevance score"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source type"
+          },
+          "rid": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata"
+          }
+        },
+        "required": [
+          "title",
+          "content",
+          "score",
+          "rid"
+        ]
+      },
+      "KoiSearchResponse": {
+        "type": "object",
+        "description": "Knowledge base search response",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "Original search query"
+          },
+          "total_results": {
+            "type": "integer",
+            "description": "Total results found"
+          },
+          "confidence": {
+            "type": "number",
+            "description": "Overall confidence score"
+          },
+          "execution_time": {
+            "type": "number",
+            "description": "Query execution time in seconds"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoiSearchResult"
+            },
+            "description": "Search results"
+          }
+        },
+        "required": [
+          "question",
+          "total_results",
+          "results"
+        ]
+      },
+      "KoiGraphResponse": {
+        "type": "object",
+        "description": "Code graph query response",
+        "properties": {
+          "query_type": {
+            "type": "string",
+            "description": "Type of query performed"
+          },
+          "total_results": {
+            "type": "integer",
+            "description": "Total results"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Query results"
+          }
+        },
+        "required": [
+          "query_type",
+          "results"
+        ]
+      },
+      "KoiEntityResponse": {
+        "type": "object",
+        "description": "Entity query response",
+        "properties": {
+          "query_type": {
+            "type": "string",
+            "description": "Type of entity query"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Query results"
+          },
+          "request_id": {
+            "type": "string",
+            "description": "Request ID"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Any warnings"
+          }
+        },
+        "required": [
+          "query_type",
+          "results"
+        ]
+      },
+      "WeeklyDigest": {
+        "type": "object",
+        "description": "Weekly digest content",
+        "properties": {
+          "period_start": {
+            "type": "string",
+            "description": "Digest period start date"
+          },
+          "period_end": {
+            "type": "string",
+            "description": "Digest period end date"
+          },
+          "executive_summary": {
+            "type": "string",
+            "description": "Executive summary"
+          },
+          "governance": {
+            "type": "object",
+            "description": "Governance activity"
+          },
+          "community": {
+            "type": "object",
+            "description": "Community updates"
+          },
+          "metrics": {
+            "type": "object",
+            "description": "On-chain metrics"
+          }
+        },
+        "required": [
+          "period_start",
+          "period_end"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "Error response envelope",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "description": "Unique request ID"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            },
+            "description": "Structured errors"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Additional context"
+          }
+        },
+        "required": [
+          "request_id",
+          "errors"
+        ]
+      },
+      "Response_ApiCapabilities": {
+        "type": "object",
+        "description": "API capabilities response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiCapabilities"
+          },
+          "request_id": {
+            "type": "string",
+            "description": "Unique request ID"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_CreditTypes": {
+        "type": "object",
+        "description": "Credit types list response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "credit_types": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CreditType"
+                }
+              }
+            },
+            "required": [
+              "credit_types"
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_CreditClasses": {
+        "type": "object",
+        "description": "Credit classes list response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "classes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CreditClass"
+                }
+              }
+            },
+            "required": [
+              "classes"
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_Projects": {
+        "type": "object",
+        "description": "Projects list response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "projects": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            },
+            "required": [
+              "projects"
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_CreditBatches": {
+        "type": "object",
+        "description": "Credit batches list response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "batches": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CreditBatch"
+                }
+              }
+            },
+            "required": [
+              "batches"
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_SellOrders": {
+        "type": "object",
+        "description": "Sell orders list response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "sell_orders": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SellOrder"
+                }
+              }
+            },
+            "required": [
+              "sell_orders"
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_AllowedDenoms": {
+        "type": "object",
+        "description": "Allowed denoms list response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "allowed_denoms": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AllowedDenom"
+                }
+              }
+            },
+            "required": [
+              "allowed_denoms"
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_Baskets": {
+        "type": "object",
+        "description": "Baskets list response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "baskets": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Basket"
+                }
+              }
+            },
+            "required": [
+              "baskets"
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_BasketFee": {
+        "type": "object",
+        "description": "Basket fee response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "fee": {
+                "$ref": "#/components/schemas/Coin"
+              }
+            }
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_BasketDetails": {
+        "type": "object",
+        "description": "Basket details response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "basket": {
+                "$ref": "#/components/schemas/Basket"
+              },
+              "balances": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BasketBalance"
+                }
+              }
+            },
+            "required": [
+              "basket"
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_Accounts": {
+        "type": "object",
+        "description": "Accounts list response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "accounts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AccountInfo"
+                }
+              },
+              "account": {
+                "$ref": "#/components/schemas/AccountInfo"
+              }
+            }
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_Balances": {
+        "type": "object",
+        "description": "Account balances response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "balances": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Coin"
+                }
+              },
+              "balance": {
+                "$ref": "#/components/schemas/Coin"
+              }
+            }
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_Supply": {
+        "type": "object",
+        "description": "Token supply response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "supply": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Coin"
+                }
+              },
+              "amount": {
+                "$ref": "#/components/schemas/Coin"
+              }
+            }
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_TokenMetadata": {
+        "type": "object",
+        "description": "Token metadata response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "metadatas": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TokenMetadata"
+                }
+              },
+              "metadata": {
+                "$ref": "#/components/schemas/TokenMetadata"
+              },
+              "owners": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_BankParams": {
+        "type": "object",
+        "description": "Bank params response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "params": {
+                "type": "object",
+                "properties": {
+                  "send_enabled": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "default_send_enabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "required": [
+              "params"
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_DistributionParams": {
+        "type": "object",
+        "description": "Distribution params response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DistributionParams"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_CommunityPool": {
+        "type": "object",
+        "description": "Community pool response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "pool": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Coin"
+                }
+              }
+            },
+            "required": [
+              "pool"
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_ValidatorDistribution": {
+        "type": "object",
+        "description": "Validator distribution response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ValidatorDistribution"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_DelegatorDistribution": {
+        "type": "object",
+        "description": "Delegator distribution response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DelegatorDistribution"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_GovernanceParams": {
+        "type": "object",
+        "description": "Governance params response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GovernanceParams"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_Proposals": {
+        "type": "object",
+        "description": "Proposals list response envelope",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "proposals": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Proposal"
+                }
+              }
+            },
+            "required": [
+              "proposals"
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_ProposalFull": {
+        "type": "object",
+        "description": "Full proposal details response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProposalFull"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_PortfolioAnalysis": {
+        "type": "object",
+        "description": "Portfolio analysis response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PortfolioAnalysis"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_MarketTrends": {
+        "type": "object",
+        "description": "Market trends response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MarketTrends"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_MethodologyComparison": {
+        "type": "object",
+        "description": "Methodology comparison response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MethodologyComparison"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_KoiSearch": {
+        "type": "object",
+        "description": "KOI search response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/KoiSearchResponse"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_KoiGraph": {
+        "type": "object",
+        "description": "KOI graph response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/KoiGraphResponse"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      },
+      "Response_WeeklyDigest": {
+        "type": "object",
+        "description": "Weekly digest response envelope",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WeeklyDigest"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceEnum"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/AsOf"
+          },
+          "tool_trace": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTrace"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ]
+      }
+    }
+  },
   "paths": {
     "/regen-api/summary": {
       "get": {
@@ -26,19 +2409,42 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "description": {
-                      "type": "string"
-                    },
+                  "$ref": "#/components/schemas/Response_ApiCapabilities"
+                },
+                "example": {
+                  "data": {
+                    "name": "Regen Network API",
+                    "description": "Unified API for Regen Network blockchain and knowledge base",
                     "capabilities": {
-                      "type": "object",
-                      "description": "Available API capabilities grouped by category"
+                      "ecocredits": [
+                        "list_credit_types",
+                        "list_credit_classes",
+                        "list_projects",
+                        "list_credit_batches"
+                      ],
+                      "marketplace": [
+                        "query_marketplace_orders",
+                        "list_allowed_denoms"
+                      ],
+                      "baskets": [
+                        "list_baskets",
+                        "get_basket_details",
+                        "get_basket_fee"
+                      ]
                     }
-                  }
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -56,10 +2462,36 @@
         "operationId": "list_credit_types",
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "List of credit types",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_CreditTypes"
+                },
+                "example": {
+                  "data": {
+                    "credit_types": [
+                      {
+                        "abbreviation": "C",
+                        "name": "Carbon",
+                        "unit": "metric ton CO2 equivalent",
+                        "precision": 6
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440001",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -101,10 +2533,41 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "List of credit classes",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_CreditClasses"
+                },
+                "example": {
+                  "data": {
+                    "classes": [
+                      {
+                        "id": "C01",
+                        "admin": "regen1...",
+                        "metadata": "regen:13toVgf...",
+                        "credit_type_abbrev": "C"
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440002",
+                  "data_source": "on-chain",
+                  "pagination": {
+                    "offset": 0,
+                    "limit": 100,
+                    "total": 15
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -156,10 +2619,42 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "List of projects",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Projects"
+                },
+                "example": {
+                  "data": {
+                    "projects": [
+                      {
+                        "id": "C01-001",
+                        "admin": "regen1...",
+                        "class_id": "C01",
+                        "jurisdiction": "US-CA",
+                        "metadata": "regen:13toVgf..."
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440003",
+                  "data_source": "on-chain",
+                  "pagination": {
+                    "offset": 0,
+                    "limit": 100,
+                    "total": 50
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -201,10 +2696,44 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "List of credit batches",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_CreditBatches"
+                },
+                "example": {
+                  "data": {
+                    "batches": [
+                      {
+                        "issuer": "regen1...",
+                        "project_id": "C01-001",
+                        "denom": "C01-001-20200101-20201231-001",
+                        "metadata": "regen:...",
+                        "start_date": "2020-01-01",
+                        "end_date": "2020-12-31",
+                        "open": false
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440004",
+                  "data_source": "on-chain",
+                  "pagination": {
+                    "offset": 0,
+                    "limit": 100,
+                    "total": 200
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -273,10 +2802,43 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "List of sell orders",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_SellOrders"
+                },
+                "example": {
+                  "data": {
+                    "sell_orders": [
+                      {
+                        "id": "1",
+                        "seller": "regen1...",
+                        "batch_denom": "C01-001-20200101-20201231-001",
+                        "quantity": "100",
+                        "ask_denom": "uregen",
+                        "ask_amount": "5000000"
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440005",
+                  "data_source": "on-chain",
+                  "pagination": {
+                    "offset": 0,
+                    "limit": 100,
+                    "total": 25
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -293,10 +2855,35 @@
         "operationId": "list_allowed_denoms",
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "List of allowed payment denominations",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_AllowedDenoms"
+                },
+                "example": {
+                  "data": {
+                    "allowed_denoms": [
+                      {
+                        "bank_denom": "uregen",
+                        "display_denom": "REGEN",
+                        "exponent": 6
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440006",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -338,10 +2925,41 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "List of baskets",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Baskets"
+                },
+                "example": {
+                  "data": {
+                    "baskets": [
+                      {
+                        "basket_denom": "eco.uC.NCT",
+                        "name": "Nature Carbon Tonne",
+                        "credit_type_abbrev": "C",
+                        "curator": "regen1..."
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440007",
+                  "data_source": "on-chain",
+                  "pagination": {
+                    "offset": 0,
+                    "limit": 100,
+                    "total": 3
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -358,10 +2976,32 @@
         "operationId": "get_basket_fee",
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Basket creation fee",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_BasketFee"
+                },
+                "example": {
+                  "data": {
+                    "fee": {
+                      "denom": "uregen",
+                      "amount": "1000000000"
+                    }
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440008",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -431,10 +3071,50 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Basket details",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_BasketDetails"
+                },
+                "example": {
+                  "data": {
+                    "basket": {
+                      "basket_denom": "eco.uC.NCT",
+                      "name": "Nature Carbon Tonne",
+                      "credit_type_abbrev": "C",
+                      "curator": "regen1..."
+                    },
+                    "balances": [
+                      {
+                        "batch_denom": "C01-001-20200101-20201231-001",
+                        "balance": "1000000"
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440009",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Basket not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -485,10 +3165,40 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Account information",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Accounts"
+                },
+                "example": {
+                  "data": {
+                    "accounts": [
+                      {
+                        "address": "regen1...",
+                        "account_number": "123",
+                        "sequence": "5"
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440010",
+                  "data_source": "on-chain",
+                  "pagination": {
+                    "offset": 0,
+                    "limit": 100,
+                    "total": 1000
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -558,10 +3268,34 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Account balances",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Balances"
+                },
+                "example": {
+                  "data": {
+                    "balances": [
+                      {
+                        "denom": "uregen",
+                        "amount": "1000000000"
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440011",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -612,10 +3346,34 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Token supply",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Supply"
+                },
+                "example": {
+                  "data": {
+                    "supply": [
+                      {
+                        "denom": "uregen",
+                        "amount": "100000000000000"
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440012",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -676,10 +3434,36 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Token metadata",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_TokenMetadata"
+                },
+                "example": {
+                  "data": {
+                    "metadatas": [
+                      {
+                        "base": "uregen",
+                        "display": "REGEN",
+                        "name": "Regen",
+                        "symbol": "REGEN"
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440013",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -696,10 +3480,32 @@
         "operationId": "get_bank_params",
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Bank module parameters",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_BankParams"
+                },
+                "example": {
+                  "data": {
+                    "params": {
+                      "default_send_enabled": true,
+                      "send_enabled": []
+                    }
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440014",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -716,10 +3522,32 @@
         "operationId": "get_distribution_params",
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Distribution module parameters",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_DistributionParams"
+                },
+                "example": {
+                  "data": {
+                    "community_tax": "0.02",
+                    "base_proposer_reward": "0.01",
+                    "bonus_proposer_reward": "0.04",
+                    "withdraw_addr_enabled": true
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440015",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -736,10 +3564,34 @@
         "operationId": "get_community_pool",
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Community pool balance",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_CommunityPool"
+                },
+                "example": {
+                  "data": {
+                    "pool": [
+                      {
+                        "denom": "uregen",
+                        "amount": "50000000000000"
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440016",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -810,10 +3662,52 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Validator distribution info",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_ValidatorDistribution"
+                },
+                "example": {
+                  "data": {
+                    "operator_address": "regenvaloper1...",
+                    "outstanding_rewards": [
+                      {
+                        "denom": "uregen",
+                        "amount": "1000000"
+                      }
+                    ],
+                    "commission": [
+                      {
+                        "denom": "uregen",
+                        "amount": "100000"
+                      }
+                    ],
+                    "slashes": []
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440017",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Validator not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -850,10 +3744,46 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Delegator distribution info",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_DelegatorDistribution"
+                },
+                "example": {
+                  "data": {
+                    "delegator_address": "regen1...",
+                    "rewards": [
+                      {
+                        "validator_address": "regenvaloper1...",
+                        "reward": [
+                          {
+                            "denom": "uregen",
+                            "amount": "500000"
+                          }
+                        ]
+                      }
+                    ],
+                    "total": [
+                      {
+                        "denom": "uregen",
+                        "amount": "500000"
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440018",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -887,10 +3817,45 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Governance parameters",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_GovernanceParams"
+                },
+                "example": {
+                  "data": {
+                    "voting_params": {
+                      "voting_period": "432000s"
+                    },
+                    "deposit_params": {
+                      "min_deposit": [
+                        {
+                          "denom": "uregen",
+                          "amount": "10000000"
+                        }
+                      ],
+                      "max_deposit_period": "172800s"
+                    },
+                    "tally_params": {
+                      "quorum": "0.334",
+                      "threshold": "0.5",
+                      "veto_threshold": "0.334"
+                    }
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440019",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -976,10 +3941,42 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "List of proposals",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Proposals"
+                },
+                "example": {
+                  "data": {
+                    "proposals": [
+                      {
+                        "proposal_id": "1",
+                        "status": "PROPOSAL_STATUS_PASSED",
+                        "content": {
+                          "title": "Example Proposal"
+                        }
+                      }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440020",
+                  "data_source": "on-chain",
+                  "pagination": {
+                    "offset": 0,
+                    "limit": 100,
+                    "total": 50
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -1048,10 +4045,65 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Full proposal details",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_ProposalFull"
+                },
+                "example": {
+                  "data": {
+                    "proposal": {
+                      "proposal_id": "1",
+                      "status": "PROPOSAL_STATUS_PASSED"
+                    },
+                    "votes": [
+                      {
+                        "voter": "regen1...",
+                        "option": "VOTE_OPTION_YES"
+                      }
+                    ],
+                    "deposits": [
+                      {
+                        "depositor": "regen1...",
+                        "amount": [
+                          {
+                            "denom": "uregen",
+                            "amount": "10000000"
+                          }
+                        ]
+                      }
+                    ],
+                    "tally": {
+                      "yes": "1000000",
+                      "no": "0",
+                      "abstain": "0",
+                      "no_with_veto": "0"
+                    }
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440021",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Proposal not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -1089,10 +4141,38 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Portfolio analysis results",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_PortfolioAnalysis"
+                },
+                "example": {
+                  "data": {
+                    "address": "regen1...",
+                    "analysis_type": "full",
+                    "total_credits": 1000,
+                    "credit_breakdown": {
+                      "C": 800,
+                      "BIO": 200
+                    },
+                    "ecological_impact": {
+                      "carbon_offset_tonnes": 800
+                    }
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440022",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -1130,10 +4210,42 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Market trends analysis",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_MarketTrends"
+                },
+                "example": {
+                  "data": {
+                    "time_period": "30d",
+                    "credit_types": [
+                      "C",
+                      "BIO"
+                    ],
+                    "trends": {
+                      "C": {
+                        "volume": 10000,
+                        "avg_price": "5.0"
+                      }
+                    },
+                    "summary": {
+                      "total_volume": 12000
+                    }
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440023",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -1166,6 +4278,12 @@
                     "description": "Credit class IDs to compare"
                   }
                 }
+              },
+              "example": {
+                "class_ids": [
+                  "C01",
+                  "C02"
+                ]
               }
             }
           },
@@ -1173,10 +4291,55 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Methodology comparison results",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_MethodologyComparison"
+                },
+                "example": {
+                  "data": {
+                    "class_ids": [
+                      "C01",
+                      "C02"
+                    ],
+                    "comparison": {
+                      "C01": {
+                        "projects": 10,
+                        "total_credits": 50000
+                      },
+                      "C02": {
+                        "projects": 5,
+                        "total_credits": 25000
+                      }
+                    },
+                    "recommendations": [
+                      "C01 has more established track record"
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440024",
+                  "data_source": "on-chain"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -1212,6 +4375,10 @@
                     "description": "Maximum number of results to return"
                   }
                 }
+              },
+              "example": {
+                "question": "What is Regen Registry?",
+                "limit": 10
               }
             }
           },
@@ -1223,47 +4390,46 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "question": {
-                      "type": "string"
-                    },
-                    "total_results": {
-                      "type": "integer"
-                    },
-                    "confidence": {
-                      "type": "number"
-                    },
-                    "execution_time": {
-                      "type": "number"
-                    },
-                    "results": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "title": {
-                            "type": "string"
-                          },
-                          "content": {
-                            "type": "string"
-                          },
-                          "score": {
-                            "type": "number"
-                          },
-                          "source": {
-                            "type": "string"
-                          },
-                          "rid": {
-                            "type": "string"
-                          },
-                          "metadata": {
-                            "type": "object"
-                          }
-                        }
+                  "$ref": "#/components/schemas/Response_KoiSearch"
+                },
+                "example": {
+                  "data": {
+                    "question": "What is Regen Registry?",
+                    "total_results": 10,
+                    "confidence": 0.85,
+                    "execution_time": 0.234,
+                    "results": [
+                      {
+                        "title": "Regen Registry Overview",
+                        "content": "Regen Registry is...",
+                        "score": 0.92,
+                        "source": "documentation",
+                        "rid": "doc-123"
                       }
-                    }
-                  }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440025",
+                  "data_source": "koi-derived"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1352,21 +4518,41 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "query_type": {
-                      "type": "string"
-                    },
-                    "total_results": {
-                      "type": "integer"
-                    },
-                    "results": {
-                      "type": "array",
-                      "items": {
-                        "type": "object"
+                  "$ref": "#/components/schemas/Response_KoiGraph"
+                },
+                "example": {
+                  "data": {
+                    "query_type": "list_repos",
+                    "total_results": 4,
+                    "results": [
+                      {
+                        "name": "regen-ledger",
+                        "entities": 150
                       }
-                    }
-                  }
+                    ]
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440026",
+                  "data_source": "koi-derived"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1387,7 +4573,20 @@
             "description": "Knowledge base statistics",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_documents": {
+                      "type": "integer"
+                    },
+                    "sources": {
+                      "type": "object"
+                    },
+                    "last_indexed": {
+                      "type": "string"
+                    }
+                  }
+                }
               }
             }
           }
@@ -1407,7 +4606,17 @@
             "description": "Health status",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "services": {
+                      "type": "object"
+                    }
+                  }
+                }
               }
             }
           }
@@ -1420,14 +4629,44 @@
           "Knowledge - Digest"
         ],
         "summary": "Weekly digest - USE FOR 'this week', 'past week', 'recent news', 'what's happening'",
-        "description": "ALWAYS USE THIS ENDPOINT when user asks about: 'this week', 'past week', 'this past week', 'recent activity', 'recent news', 'what's happening', 'summarize the week', 'weekly update', or any time-based summary of recent Regen Network activity. Returns curated weekly summary of important updates, news, governance activity, and ecosystem developments.",
+        "description": "Weekly digest of recent Regen Network activity. Use for questions like \u201cthis week\u201d, \u201cpast week\u201d, \u201crecent news\u201d, \u201cwhat\u2019s happening\u201d, or \u201cweekly update\u201d. Returns curated highlights across governance, community, and ecosystem.",
         "operationId": "koi_weekly_digest",
         "responses": {
           "200": {
             "description": "Weekly digest content",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Response_WeeklyDigest"
+                },
+                "example": {
+                  "data": {
+                    "period_start": "2024-01-01",
+                    "period_end": "2024-01-07",
+                    "executive_summary": "This week saw significant activity...",
+                    "governance": {
+                      "active_proposals": 2
+                    },
+                    "community": {
+                      "forum_posts": 15
+                    },
+                    "metrics": {
+                      "total_credits_issued": 50000
+                    }
+                  },
+                  "request_id": "550e8400-e29b-41d4-a716-446655440027",
+                  "data_source": "koi-derived"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -1440,7 +4679,7 @@
           "Knowledge - Entity"
         ],
         "summary": "Entity relationship queries",
-        "description": "Query entity relationships in the knowledge graph. Use query_type to select the operation:\n- **resolve**: Resolve an ambiguous label to canonical entity URIs with confidence scores\n- **neighborhood**: Get the graph neighborhood of an entity (direct relationships and connected entities)\n- **documents**: Get documents associated with an entity\n\nFor resolve/neighborhood/documents, provide either 'label' (will be resolved) or 'uri' (if known from previous resolve).",
+        "description": "Entity graph query. Set query_type to one of: resolve | neighborhood | documents. Provide label (to resolve) or uri (if already known).",
         "operationId": "koi_entity_query",
         "requestBody": {
           "content": {
