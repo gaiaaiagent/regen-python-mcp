@@ -655,17 +655,17 @@ class RegenClient:
     
     async def query_credit_batches(self, pagination: Optional[Pagination] = None) -> Dict[str, Any]:
         """Query all credit batches on Regen Network.
-        
+
         Args:
             pagination: Pagination parameters
-            
+
         Returns:
             Dictionary containing credit batches and pagination info
         """
         params = {}
         if pagination:
             params.update(pagination.to_query_params())
-        
+
         try:
             response = await self._make_request(
                 "/regen/ecocredit/v1/batches",
@@ -676,6 +676,134 @@ class RegenClient:
         except Exception as e:
             logger.error(f"Failed to query credit batches: {e}")
             raise
+
+    async def query_batch_supply(self, batch_denom: str) -> Dict[str, Any]:
+        """Query supply breakdown for a specific credit batch.
+
+        Returns tradable, retired, and cancelled amounts for the batch.
+        Total issued = tradable + retired + cancelled.
+
+        Args:
+            batch_denom: Credit batch denomination (e.g., "C01-001-20150101-20151231-001")
+
+        Returns:
+            Dictionary containing:
+                - tradable_amount: Credits available for trading
+                - retired_amount: Credits that have been retired
+                - cancelled_amount: Credits that have been cancelled
+
+        Raises:
+            HttpClientError: If batch not found (404)
+            NetworkError: If request fails
+        """
+        try:
+            response = await self._make_request(
+                f"/regen/ecocredit/v1/batches/{batch_denom}/supply",
+                endpoint_type="rest"
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Failed to query batch supply for {batch_denom}: {e}")
+            raise
+
+    async def query_batch_supplies_bulk(
+        self,
+        batch_denoms: List[str],
+        max_concurrent: int = 20,
+        timeout_seconds: float = 30.0,
+    ) -> Dict[str, Any]:
+        """Query supply data for multiple batches in parallel with concurrency control.
+
+        This method fetches supply data for multiple batches efficiently using
+        controlled parallelism to avoid overwhelming the upstream API.
+
+        Args:
+            batch_denoms: List of batch denominations to query
+            max_concurrent: Maximum concurrent requests (default 20)
+            timeout_seconds: Overall timeout budget in seconds (default 30s)
+
+        Returns:
+            Dictionary containing:
+                - supplies: Dict mapping batch_denom to supply data
+                - fetched_count: Number of batches successfully fetched
+                - failed_count: Number of batches that failed
+                - warnings: List of any issues encountered
+                - timed_out: True if operation was stopped due to timeout
+        """
+        import time as time_module
+
+        supplies: Dict[str, Dict[str, Any]] = {}
+        warnings: List[str] = []
+        failed_count = 0
+        timed_out = False
+        start_time = time_module.time()
+
+        # Semaphore for concurrency control
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def fetch_with_semaphore(denom: str) -> tuple[str, Optional[Dict[str, Any]], Optional[str]]:
+            """Fetch supply for a single batch with semaphore control."""
+            async with semaphore:
+                # Check timeout budget
+                elapsed = time_module.time() - start_time
+                if elapsed >= timeout_seconds:
+                    return (denom, None, "TIMEOUT")
+
+                try:
+                    supply = await self.query_batch_supply(denom)
+                    return (denom, supply, None)
+                except HttpClientError as e:
+                    # 404 or other client errors
+                    if e.status_code == 404 or (e.status_code and 400 <= e.status_code < 500):
+                        return (denom, None, f"not_found_or_invalid: {e.message}")
+                    return (denom, None, f"client_error: {e.message}")
+                except Exception as e:
+                    return (denom, None, f"error: {str(e)}")
+
+        # Create all tasks
+        tasks = [fetch_with_semaphore(denom) for denom in batch_denoms]
+
+        # Execute with gather
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for result in results:
+            if isinstance(result, Exception):
+                failed_count += 1
+                warnings.append(f"Unexpected exception: {result}")
+                continue
+
+            denom, supply, error = result
+            if error == "TIMEOUT":
+                timed_out = True
+                # Don't count as failed - just stopped early
+                break
+            elif error:
+                failed_count += 1
+                # Only log first few failures to avoid spam
+                if failed_count <= 5:
+                    logger.debug(f"Batch supply fetch failed for {denom}: {error}")
+            else:
+                supplies[denom] = supply
+
+        # Add summary warnings
+        if timed_out:
+            warnings.append(
+                f"TIMEOUT_REACHED: Supply fetching stopped after {timeout_seconds}s budget. "
+                f"Fetched {len(supplies)} of {len(batch_denoms)} batches."
+            )
+
+        if failed_count > 0:
+            warnings.append(
+                f"SUPPLY_FETCH_FAILURES: {failed_count} batches failed to fetch supply data"
+            )
+
+        return {
+            "supplies": supplies,
+            "fetched_count": len(supplies),
+            "failed_count": failed_count,
+            "warnings": warnings,
+            "timed_out": timed_out,
+        }
     
     async def query_sell_orders(self, pagination: Optional[Pagination] = None) -> Dict[str, Any]:
         """Query all marketplace sell orders on Regen Network.

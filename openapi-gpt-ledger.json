@@ -2749,23 +2749,34 @@
                     }
                   },
                   "summary": {
-                    "summary": "Aggregate summary by credit type",
+                    "summary": "Aggregate summary by credit type with real supply data",
                     "value": {
                       "data": {
                         "summary": [
                           {
                             "credit_type": "C",
                             "batch_count": 150,
-                            "total_issued": 1500000.0,
-                            "total_tradable": 500000.0,
-                            "total_retired": 1000000.0,
+                            "total_issued": 1523456.5,
+                            "total_tradable": 498123.0,
+                            "total_retired": 1025333.5,
                             "total_cancelled": 0.0,
                             "unique_classes": 12,
                             "unique_projects": 45
+                          },
+                          {
+                            "credit_type": "BT",
+                            "batch_count": 25,
+                            "total_issued": 85000.0,
+                            "total_tradable": 35000.0,
+                            "total_retired": 50000.0,
+                            "total_cancelled": 0.0,
+                            "unique_classes": 3,
+                            "unique_projects": 8
                           }
                         ],
-                        "batches_analyzed": 200,
-                        "total_batches": 200,
+                        "batches_analyzed": 175,
+                        "batches_with_supply_data": 175,
+                        "total_batches": 175,
                         "aggregation": {
                           "method": "by_credit_type",
                           "metrics": [
@@ -2773,13 +2784,58 @@
                             "total_tradable",
                             "total_retired",
                             "total_cancelled"
-                          ]
+                          ],
+                          "supply_source": "on-chain per-batch supply query"
+                        },
+                        "caps": {
+                          "max_batch_pages": 50,
+                          "max_supply_batches": 500,
+                          "supply_timeout_seconds": 25.0
                         }
                       },
                       "request_id": "550e8400-e29b-41d4-a716-446655440005",
+                      "data_source": "on-chain"
+                    }
+                  },
+                  "summary_partial": {
+                    "summary": "Summary with partial supply data (caps reached)",
+                    "value": {
+                      "data": {
+                        "summary": [
+                          {
+                            "credit_type": "C",
+                            "batch_count": 600,
+                            "total_issued": 2850000.0,
+                            "total_tradable": 950000.0,
+                            "total_retired": 1900000.0,
+                            "total_cancelled": 0.0,
+                            "unique_classes": 15,
+                            "unique_projects": 120
+                          }
+                        ],
+                        "batches_analyzed": 600,
+                        "batches_with_supply_data": 500,
+                        "total_batches": 600,
+                        "aggregation": {
+                          "method": "by_credit_type",
+                          "metrics": [
+                            "total_issued",
+                            "total_tradable",
+                            "total_retired",
+                            "total_cancelled"
+                          ],
+                          "supply_source": "on-chain per-batch supply query"
+                        },
+                        "caps": {
+                          "max_batch_pages": 50,
+                          "max_supply_batches": 500,
+                          "supply_timeout_seconds": 25.0
+                        }
+                      },
+                      "request_id": "550e8400-e29b-41d4-a716-446655440006",
                       "data_source": "on-chain",
                       "warnings": [
-                        "PAGINATION_NOT_EXHAUSTED: Summary computed from 50 pages (5000 batches). Total may be higher."
+                        "SUPPLY_BATCHES_CAPPED: Supply data fetched for first 500 batches only. Total batches: 600. Supply totals are partial."
                       ]
                     }
                   }

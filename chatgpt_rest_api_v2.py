@@ -71,6 +71,15 @@ ENRICHMENT_MAX_ITEMS = 10  # Cap enriched items per response
 ENRICHMENT_TIMEOUT_SECONDS = 5.0  # Strict timeout per enrichment
 METADATA_IRI_PREFIX = "regen:"  # Only enrich Regen IRIs
 
+# =============================================================================
+# Supply Enrichment Configuration (Batch Summary Mode)
+# =============================================================================
+# Caps for batch supply fetching to avoid N+1 explosions
+MAX_BATCH_PAGES = 50  # Max pages to fetch when fetch_all=true
+MAX_SUPPLY_BATCHES = 500  # Max batches for which to fetch supply data
+SUPPLY_FETCH_TIMEOUT_SECONDS = 25.0  # Time budget for supply fetching
+SUPPLY_MAX_CONCURRENT = 20  # Max concurrent supply requests
+
 
 async def derive_hectares_for_iri(
     iri: str,
@@ -604,7 +613,7 @@ async def list_credit_batches(
     warnings: List[str] = []
 
     if summary:
-        # Summary mode: aggregate batches by credit type
+        # Summary mode: aggregate batches by credit type with real supply data
         from mcp_server.client.regen_client import get_regen_client
 
         client = get_regen_client()
@@ -614,7 +623,7 @@ async def list_credit_batches(
             fetch_result = await client.fetch_all_pages(
                 path="/regen/ecocredit/v1/batches",
                 page_size=100,
-                max_pages=50,  # Safety cap
+                max_pages=MAX_BATCH_PAGES,  # Safety cap
                 item_key="batches",
             )
             batches = fetch_result["items"]
@@ -639,15 +648,61 @@ async def list_credit_batches(
                 "Use fetch_all=true for complete totals."
             )
 
-        # Compute summary by credit type
+        # === SUPPLY ENRICHMENT: Fetch real supply data for batches ===
+        # Extract batch denoms for supply lookup
+        batch_denoms = [b.get("denom") for b in batches if b.get("denom")]
+
+        # Apply MAX_SUPPLY_BATCHES cap
+        supply_capped = False
+        if len(batch_denoms) > MAX_SUPPLY_BATCHES:
+            supply_capped = True
+            batch_denoms = batch_denoms[:MAX_SUPPLY_BATCHES]
+            warnings.append(
+                f"SUPPLY_BATCHES_CAPPED: Supply data fetched for first {MAX_SUPPLY_BATCHES} batches only. "
+                f"Total batches: {len(batches)}. Supply totals are partial."
+            )
+
+        # Fetch supply data in bulk with concurrency control
+        supplies_by_denom: Dict[str, Dict[str, Any]] = {}
+        supply_fetch_warnings: List[str] = []
+
+        if batch_denoms:
+            supply_result = await client.query_batch_supplies_bulk(
+                batch_denoms=batch_denoms,
+                max_concurrent=SUPPLY_MAX_CONCURRENT,
+                timeout_seconds=SUPPLY_FETCH_TIMEOUT_SECONDS,
+            )
+            supplies_by_denom = supply_result.get("supplies", {})
+            supply_fetch_warnings = supply_result.get("warnings", [])
+            warnings.extend(supply_fetch_warnings)
+
+            if supply_result.get("timed_out"):
+                warnings.append(
+                    f"SUPPLY_TIMEOUT: Supply fetching timed out. "
+                    f"Only {supply_result['fetched_count']} of {len(batch_denoms)} batches have supply data."
+                )
+
+        # Track how many batches have supply data
+        batches_with_supply = len(supplies_by_denom)
+
+        # Compute summary by credit type using real supply data
         summary_by_type: Dict[str, Dict[str, Any]] = {}
+
+        def parse_amount(val: Any) -> float:
+            """Parse supply amounts (they come as strings)."""
+            if val is None:
+                return 0.0
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return 0.0
+
         for batch in batches:
+            batch_denom = batch.get("denom", "")
+
             # Extract credit type from project_id or denom (e.g., "C01-001" -> "C", "BT01-002" -> "BT")
-            # The project_id format is typically "{class_id}-{project_num}" where class_id is like "C01"
-            project_id = batch.get("project_id", "") or batch.get("denom", "").split("-")[0] if batch.get("denom") else ""
-            # Extract the class_id (first part before the hyphen)
+            project_id = batch.get("project_id", "") or batch_denom.split("-")[0] if batch_denom else ""
             class_id = project_id.split("-")[0] if project_id else ""
-            # Credit type is the alphabetic prefix of the class_id
             credit_type = "".join(c for c in class_id if c.isalpha())
             if not credit_type:
                 credit_type = "UNKNOWN"
@@ -666,29 +721,21 @@ async def list_credit_batches(
 
             summary_by_type[credit_type]["batch_count"] += 1
 
-            # Parse supply amounts (they come as strings)
-            def parse_amount(val: Any) -> float:
-                if val is None:
-                    return 0.0
-                try:
-                    return float(val)
-                except (ValueError, TypeError):
-                    return 0.0
+            # Get supply info from the bulk fetch results
+            supply = supplies_by_denom.get(batch_denom, {})
 
-            # Get supply info from batch
-            supply = batch.get("supply", {}) if isinstance(batch.get("supply"), dict) else {}
-            summary_by_type[credit_type]["total_issued"] += parse_amount(
-                batch.get("total_amount") or supply.get("total_amount")
-            )
-            summary_by_type[credit_type]["total_tradable"] += parse_amount(
-                batch.get("tradable_amount") or supply.get("tradable_amount")
-            )
-            summary_by_type[credit_type]["total_retired"] += parse_amount(
-                batch.get("retired_amount") or supply.get("retired_amount")
-            )
-            summary_by_type[credit_type]["total_cancelled"] += parse_amount(
-                batch.get("cancelled_amount") or supply.get("cancelled_amount")
-            )
+            tradable = parse_amount(supply.get("tradable_amount"))
+            retired = parse_amount(supply.get("retired_amount"))
+            cancelled = parse_amount(supply.get("cancelled_amount"))
+
+            # Total issued = tradable + retired + cancelled (conservation of credits)
+            total_issued = tradable + retired + cancelled
+
+            summary_by_type[credit_type]["total_issued"] += total_issued
+            summary_by_type[credit_type]["total_tradable"] += tradable
+            summary_by_type[credit_type]["total_retired"] += retired
+            summary_by_type[credit_type]["total_cancelled"] += cancelled
+
             if class_id:
                 summary_by_type[credit_type]["class_ids"].add(class_id)
             if batch.get("project_id"):
@@ -704,19 +751,33 @@ async def list_credit_batches(
         # Sort by total issued descending
         summary_list.sort(key=lambda x: x["total_issued"], reverse=True)
 
+        # Add warning if supply totals are incomplete
+        if batches_with_supply < len(batches) and not supply_capped:
+            warnings.append(
+                f"PARTIAL_SUPPLY_DATA: Supply data available for {batches_with_supply} of {len(batches)} batches. "
+                "Totals may be understated."
+            )
+
         response_data = {
             "summary": summary_list,
             "batches_analyzed": len(batches),
+            "batches_with_supply_data": batches_with_supply,
             "total_batches": total_batches,
             "aggregation": {
                 "method": "by_credit_type",
                 "metrics": ["total_issued", "total_tradable", "total_retired", "total_cancelled"],
+                "supply_source": "on-chain per-batch supply query",
+            },
+            "caps": {
+                "max_batch_pages": MAX_BATCH_PAGES,
+                "max_supply_batches": MAX_SUPPLY_BATCHES,
+                "supply_timeout_seconds": SUPPLY_FETCH_TIMEOUT_SECONDS,
             },
         }
 
         trace = create_tool_trace(
             tool="list_credit_batches_summary",
-            params={"summary": True, "fetch_all": fetch_all},
+            params={"summary": True, "fetch_all": fetch_all, "batches_with_supply": batches_with_supply},
             data_source=DataSource.ON_CHAIN,
             duration_ms=(time.time() - start_time) * 1000
         )
