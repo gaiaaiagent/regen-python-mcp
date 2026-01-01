@@ -642,9 +642,12 @@ async def list_credit_batches(
         # Compute summary by credit type
         summary_by_type: Dict[str, Dict[str, Any]] = {}
         for batch in batches:
-            # Extract credit type from class_id (e.g., "C01" -> "C", "BT01" -> "BT")
-            class_id = batch.get("class_id", "")
-            # Credit type is the alphabetic prefix
+            # Extract credit type from project_id or denom (e.g., "C01-001" -> "C", "BT01-002" -> "BT")
+            # The project_id format is typically "{class_id}-{project_num}" where class_id is like "C01"
+            project_id = batch.get("project_id", "") or batch.get("denom", "").split("-")[0] if batch.get("denom") else ""
+            # Extract the class_id (first part before the hyphen)
+            class_id = project_id.split("-")[0] if project_id else ""
+            # Credit type is the alphabetic prefix of the class_id
             credit_type = "".join(c for c in class_id if c.isalpha())
             if not credit_type:
                 credit_type = "UNKNOWN"
@@ -686,7 +689,8 @@ async def list_credit_batches(
             summary_by_type[credit_type]["total_cancelled"] += parse_amount(
                 batch.get("cancelled_amount") or supply.get("cancelled_amount")
             )
-            summary_by_type[credit_type]["class_ids"].add(class_id)
+            if class_id:
+                summary_by_type[credit_type]["class_ids"].add(class_id)
             if batch.get("project_id"):
                 summary_by_type[credit_type]["project_ids"].add(batch["project_id"])
 
