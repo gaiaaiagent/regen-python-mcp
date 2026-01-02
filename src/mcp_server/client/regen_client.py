@@ -276,6 +276,37 @@ class RegenClient:
         except ValueError:
             return None
 
+    def _should_try_next_endpoint(
+        self,
+        *,
+        status_code: int,
+        response_text: str,
+        url: str,
+    ) -> bool:
+        """Return True when a response indicates an endpoint mismatch.
+
+        Some public gateways return "client" errors even when the request is valid,
+        e.g. Cosmos Directory may respond with 404 "Chain not found" for a chain it
+        doesn't currently serve. In those cases we should fall back to the next
+        endpoint instead of failing the whole tool call.
+        """
+        text = (response_text or "").lower()
+        host = urlparse(url).netloc.lower()
+
+        # Observed on rest.cosmos.directory for Regen: valid requests can yield 404 "Chain not found".
+        if status_code == 404 and "chain not found" in text:
+            return True
+
+        # Some gateways respond 501 for unimplemented module routes.
+        if status_code == 501 and ("not implemented" in text or "not_implemented" in text):
+            return True
+
+        # If a gateway is fronting the wrong chain, we may see 404s/400s that are effectively endpoint issues.
+        if "cosmos.directory" in host and status_code in (400, 404) and ("chain" in text and "not found" in text):
+            return True
+
+        return False
+
     async def _make_request(
         self,
         path: str,
@@ -341,23 +372,47 @@ class RegenClient:
                     last_status_code = status_code
                     retry_after_ms = self._parse_retry_after(response)
 
+                    error_body = ""
+                    try:
+                        error_body = response.text[:200]
+                    except Exception:
+                        pass
+
+                    # Some "client" errors are actually endpoint mismatches; try the next endpoint.
+                    if self._should_try_next_endpoint(
+                        status_code=status_code,
+                        response_text=error_body,
+                        url=url,
+                    ):
+                        last_exception = HttpClientError(
+                            message=f"Endpoint mismatch: HTTP {status_code}: {error_body}",
+                            status_code=status_code,
+                        )
+                        logger.warning(f"Endpoint mismatch for {url}: HTTP {status_code}: {error_body} (trying next endpoint)")
+                        break
+
                     # 4xx Client errors (except 429) - don't retry, fail immediately
                     if 400 <= status_code < 500 and status_code != 429:
-                        error_body = ""
-                        try:
-                            error_body = response.text[:200]
-                        except Exception:
-                            pass
                         raise HttpClientError(
                             message=f"HTTP {status_code}: {error_body}",
                             status_code=status_code,
                         )
 
-                    # 429 or 5xx - retryable errors
+                    # 429 or 5xx - retryable errors (but some codes like 501 are deterministic endpoint gaps)
                     if self._is_retryable_status(status_code):
                         error_msg = f"HTTP {status_code}"
                         if status_code == 429:
                             error_msg = "Rate limited (429)"
+
+                        # 501 is frequently "route not implemented by this gateway" — skip to next endpoint.
+                        if status_code == 501:
+                            last_exception = HttpServerError(
+                                message=error_msg,
+                                status_code=status_code,
+                                retry_after_ms=retry_after_ms or 5000,
+                            )
+                            logger.warning(f"HTTP 501 for {url}: {error_body} (trying next endpoint)")
+                            break
                         last_exception = HttpServerError(
                             message=error_msg,
                             status_code=status_code,
