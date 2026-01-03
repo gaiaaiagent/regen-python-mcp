@@ -912,6 +912,65 @@
               "$ref": "#/components/schemas/KoiSearchResult"
             },
             "description": "Search results"
+          },
+          "answerable": {
+            "type": "boolean",
+            "description": "Whether the query can be reliably answered with available evidence"
+          },
+          "answerability_reason": {
+            "type": "string",
+            "enum": [
+              "sufficient_evidence",
+              "no_recent_sources",
+              "no_dated_sources",
+              "sources_only_identity_mentions",
+              "policy_filtered_all_sources",
+              "ambiguous_entity",
+              "insufficient_candidates"
+            ],
+            "description": "Reason for answerability status"
+          },
+          "evidence_summary": {
+            "type": "string",
+            "description": "Summary of supporting evidence found (when answerable)"
+          },
+          "profile_debug": {
+            "type": "object",
+            "description": "Retrieval profile debug info",
+            "properties": {
+              "profile_name": {
+                "type": "string",
+                "description": "Name of the profile used"
+              },
+              "profile_version": {
+                "type": "string",
+                "description": "Version of the profile"
+              },
+              "effective_policy": {
+                "type": "string",
+                "enum": [
+                  "public",
+                  "internal_ok"
+                ],
+                "description": "Effective policy after auth check"
+              },
+              "recency_window_used": {
+                "type": "integer",
+                "description": "Recency window in months (0 = none)"
+              },
+              "candidates_total": {
+                "type": "integer",
+                "description": "Candidates before filtering"
+              },
+              "candidates_filtered": {
+                "type": "integer",
+                "description": "Candidates removed by profile"
+              },
+              "candidates_kept": {
+                "type": "integer",
+                "description": "Candidates kept after filtering"
+              }
+            }
           }
         },
         "required": [
@@ -4489,6 +4548,28 @@
                     "maximum": 50,
                     "default": 10,
                     "description": "Maximum number of results to return"
+                  },
+                  "intent": {
+                    "type": "string",
+                    "enum": [
+                      "general",
+                      "person_activity",
+                      "person_bio",
+                      "concept_explain",
+                      "technical_howto",
+                      "code_navigation"
+                    ],
+                    "default": "general",
+                    "description": "Query intent for retrieval profile selection (use person_activity for 'what is X working on?')"
+                  },
+                  "source_policy": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "internal_ok"
+                    ],
+                    "default": "public",
+                    "description": "Source visibility policy (bounded by auth; internal_ok may be downgraded)"
                   }
                 }
               },

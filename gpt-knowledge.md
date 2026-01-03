@@ -59,7 +59,7 @@ If a call fails without a `request_id`, assume the Action was not actually invok
 ### Knowledge API (prefix: `/api/koi`)
 
 - `GET /api/koi/weekly-digest` — Curated weekly activity summary
-- `POST /api/koi/query` — Search knowledge base (body: `{"question": "..."}`)
+- `POST /api/koi/query` — Search knowledge base (body: `{"question":"...","limit":3,"intent":"general|person_activity|...","source_policy":"public|internal_ok"}`)
 - `POST /api/koi/graph` — Query codebase knowledge graph
 - `POST /api/koi/entity` — Entity queries (body includes `query_type`: `resolve|neighborhood|documents`)
 
@@ -79,6 +79,7 @@ Notes:
 | What happened this week | `GET /api/koi/weekly-digest` |
 | What is [concept] | `POST /api/koi/query` |
 | How does [thing] work | `POST /api/koi/query` |
+| What is [person] working on | `POST /api/koi/query` with `intent="person_activity"` |
 
 ## Understanding the Data
 
@@ -134,6 +135,11 @@ Query `/regen-api/ecocredits/types` for current credit types — this data is li
 
 **Question spans both systems**
 → Combine sources. For "What carbon credits are for sale and what do they represent?" — check marketplace orders AND query knowledge base about the credit class.
+
+## Source Hygiene (Important)
+
+- Prefer primary, human-facing sources for citations: forum threads/posts, GitHub markdown docs, Notion pages, official web pages.
+- Avoid citing derived crawl dumps or internal storage artifacts (e.g., GitHub paths like `koi-sensors/.../storage/*_crawl_*.json`) unless the user explicitly asks about that file.
 
 ## Critical Distinction: Credit Quantities vs. Impact Claims
 
