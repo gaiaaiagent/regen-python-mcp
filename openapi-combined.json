@@ -1042,7 +1042,7 @@
       "get": {
         "tags": ["Ledger - Ecocredits"],
         "summary": "List projects",
-        "description": "List ecological projects registered on Regen that generate credits. Returns up to `limit` results; check `pagination.has_more` for additional pages. When include_offchain_metrics=true, projects with Regen metadata IRIs will be enriched with hectares derived from off-chain metadata. Enforces 'no citation, no metric' - hectares only appear with full provenance.",
+        "description": "List ecological projects that generate credits. Paginated; check `pagination.has_more`. Use include_offchain_metrics=true for hectares from metadata IRIs (requires provenance).",
         "operationId": "list_projects",
         "parameters": [
           {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100}, "description": "Max results to return"},
@@ -1170,7 +1170,7 @@
       "get": {
         "tags": ["Ledger - Marketplace"],
         "summary": "Query sell orders",
-        "description": "Query marketplace sell orders. Returns up to `limit` results; check `pagination.has_more` for additional pages. Use query params to filter:\n- No params: List all active orders\n- ?id=123: Get specific order by ID\n- ?batch=C01-001-...: Filter orders for a credit batch\n- ?seller=regen1...: Filter orders by seller address",
+        "description": "Query marketplace sell orders. Paginated; check `pagination.has_more`. Filter by ?id, ?batch, or ?seller.",
         "operationId": "query_marketplace_orders",
         "parameters": [
           {"name": "id", "in": "query", "required": false, "schema": {"type": "integer"}, "description": "Get specific order by ID"},
@@ -1482,7 +1482,7 @@
       "get": {
         "tags": ["Ledger - Distribution"],
         "summary": "Distribution params",
-        "description": "Get distribution module parameters for understanding network economics. **Metrics returned:** Community tax rate (% of rewards to community pool), base/bonus proposer rewards, withdraw address settings. **Use when:** Understanding network tokenomics, calculating expected validator/delegator yields, governance research. **Example use cases:** Yield calculations, protocol economic analysis, comparing with other Cosmos chains.",
+        "description": "Get distribution params: community tax rate, proposer rewards, withdraw settings. Use for yield calculations and network economics.",
         "operationId": "get_distribution_params",
         "responses": {
           "200": {
@@ -1511,7 +1511,7 @@
       "get": {
         "tags": ["Ledger - Distribution"],
         "summary": "Community pool",
-        "description": "Get community pool balance (funds available for governance spending). **Metrics returned:** Total pool balance in uregen (1 REGEN = 1,000,000 uregen). **Use when:** Assessing available funds for governance proposals, tracking community treasury growth, planning funding requests. **Example use cases:** Proposal budgeting, treasury analysis, ecosystem funding reports.",
+        "description": "Get community pool balance (uregen). Use for governance proposal budgeting and treasury analysis.",
         "operationId": "get_community_pool",
         "responses": {
           "200": {
@@ -1537,7 +1537,7 @@
       "get": {
         "tags": ["Ledger - Distribution"],
         "summary": "Validator distribution info",
-        "description": "Get validator distribution info for staking economics analysis. **Metrics returned:** Outstanding rewards (unclaimed), accumulated commission, slashing events history. **Use when:** Evaluating validator performance, checking unclaimed rewards, auditing slashing history, validator comparison. **Example use cases:** Validator selection for delegation, commission income analysis, security incident investigation. Slashes are paginated; check `pagination.has_more` for additional pages.",
+        "description": "Get validator rewards, commission, and slashing history. Use for validator performance analysis. Slashes paginated; check `pagination.has_more`.",
         "operationId": "get_validator_distribution",
         "parameters": [
           {"name": "address", "in": "path", "required": true, "schema": {"type": "string"}, "description": "Validator operator address (regenvaloper1...)"},
@@ -1574,7 +1574,7 @@
       "get": {
         "tags": ["Ledger - Distribution"],
         "summary": "Delegator distribution info",
-        "description": "Get delegator staking rewards info for tracking staking income. **Metrics returned:** Rewards by validator, total pending rewards across all delegations, withdrawal address. **Use when:** Checking unclaimed staking rewards, calculating staking income, tax reporting, delegation strategy. **Example use cases:** Portfolio tracking apps, reward harvesting decisions, multi-validator delegation analysis. Use ?validator=regenvaloper1... for rewards from specific validator.",
+        "description": "Get delegator staking rewards by validator and withdrawal address. Use for tracking staking income. Filter with ?validator=regenvaloper1...",
         "operationId": "get_delegator_distribution",
         "parameters": [
           {"name": "address", "in": "path", "required": true, "schema": {"type": "string"}, "description": "Delegator account address (regen1...)"},
@@ -1711,7 +1711,7 @@
       "get": {
         "tags": ["Ledger - Analytics"],
         "summary": "Portfolio impact analysis",
-        "description": "Analyze ecological impact of an address's credit holdings. **Metrics returned:** Total credits held, breakdown by credit type (C, BIO, etc.), ecological impact estimates (carbon offset tonnes, biodiversity units). **Use when:** Assessing an address's environmental portfolio, calculating impact for reporting, comparing holder portfolios. **Example use cases:** Investor impact reports, organization sustainability metrics, portfolio diversification analysis.",
+        "description": "Analyze ecological impact of an address's credit holdings: totals by credit type, carbon offset tonnes, biodiversity units. Use for impact reporting.",
         "operationId": "analyze_portfolio_impact",
         "parameters": [
           {"name": "address", "in": "path", "required": true, "schema": {"type": "string"}, "description": "Account address to analyze"},
@@ -1745,7 +1745,7 @@
       "get": {
         "tags": ["Ledger - Analytics"],
         "summary": "Market trends",
-        "description": "Analyze market trends across credit types. **Metrics returned:** Trading volume, average prices, price trends, market activity by credit type over specified time period. **Use when:** Monitoring market health, identifying trending credit types, price discovery, market research. **Example use cases:** Market reports, trading strategy analysis, credit type popularity comparisons. Call without parameters for all credit types.",
+        "description": "Analyze market trends: trading volume, average prices, activity by credit type over time. Use ?time_period=7d/30d/90d/1y.",
         "operationId": "analyze_market_trends",
         "parameters": [
           {"name": "credit_types", "in": "query", "required": false, "schema": {"type": "string"}, "description": "Comma-separated credit type codes: C (Carbon), BT (BioTerra), KSH (Kilo-Sheep-Hour), USS (Umbrella Species), MBS (Marine Biodiversity). Example: C,BT"},
@@ -1778,7 +1778,7 @@
       "post": {
         "tags": ["Ledger - Analytics"],
         "summary": "Compare methodologies",
-        "description": "Compare different credit class methodologies for impact efficiency. **Metrics returned:** Project counts, total credits issued/retired per class, methodology details, impact efficiency metrics. **Use when:** Evaluating which credit class best fits a project, comparing impact verification approaches, methodology research. **Example use cases:** Project developers choosing methodologies, buyers comparing credit quality, researchers analyzing ecosystem health.",
+        "description": "Compare credit class methodologies: project counts, credits issued/retired, impact efficiency. Use for methodology evaluation.",
         "operationId": "compare_credit_methodologies",
         "requestBody": {
           "content": {
