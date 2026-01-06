@@ -2460,7 +2460,7 @@
           "Knowledge - Search"
         ],
         "summary": "Semantic knowledge search",
-        "description": "Search the Regen Network knowledge base using hybrid semantic search (vector + keyword + graph-boosted retrieval). Returns relevant documents about regenerative agriculture, Regen Network, ecological credits, and related topics. **IMPORTANT: The `score` field in results represents RETRIEVAL RELEVANCE (how well a result matches the query), NOT factual accuracy or truth. High scores indicate good semantic/keyword match, not verified facts.** Results include source citations (rid, url) for verification. Use `intent` parameter for specialized retrieval profiles (e.g., person_activity for 'what is X working on?').",
+        "description": "Semantic search across 6,500+ docs on regen ag, ecological credits, Regen Network. Score = retrieval relevance, not truth. Use ?intent for specialized profiles.",
         "operationId": "koi_semantic_search",
         "requestBody": {
           "content": {
@@ -2696,7 +2696,7 @@
           "Knowledge - Digest"
         ],
         "summary": "Weekly digest - USE FOR 'this week', 'past week', 'recent news', 'what's happening'",
-        "description": "Weekly digest of recent Regen Network activity. **Sources:** Discourse forum discussions, GitHub activity (commits, PRs, issues), on-chain governance proposals/votes, credit issuance/retirement metrics, and community channels. **Use for:** 'this week', 'past week', 'recent news', 'what's happening', 'weekly update', team briefings, stakeholder updates. **Returns:** Curated highlights with executive summary, governance analysis, community discussions, and on-chain metrics. Date range defaults to past 7 days.",
+        "description": "Weekly digest of Regen Network activity: Discourse, GitHub, governance, credits. Use for 'this week', 'recent news', 'what's happening'. Returns past 7 days.",
         "operationId": "koi_weekly_digest",
         "responses": {
           "200": {
