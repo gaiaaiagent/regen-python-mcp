@@ -1009,7 +1009,7 @@
       "get": {
         "tags": ["Ledger - Ecocredits"],
         "summary": "List credit classes",
-        "description": "List credit classes (methodologies for measuring ecological benefits).",
+        "description": "List credit classes (methodologies for measuring ecological benefits). Returns up to `limit` results; check `pagination.has_more` for additional pages.",
         "operationId": "list_credit_classes",
         "parameters": [
           {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100}, "description": "Max results to return"},
@@ -1042,7 +1042,7 @@
       "get": {
         "tags": ["Ledger - Ecocredits"],
         "summary": "List projects",
-        "description": "List ecological projects registered on Regen that generate credits. When include_offchain_metrics=true, projects with Regen metadata IRIs will be enriched with hectares derived from off-chain metadata. Enforces 'no citation, no metric' - hectares only appear with full provenance.",
+        "description": "List ecological projects registered on Regen that generate credits. Returns up to `limit` results; check `pagination.has_more` for additional pages. When include_offchain_metrics=true, projects with Regen metadata IRIs will be enriched with hectares derived from off-chain metadata. Enforces 'no citation, no metric' - hectares only appear with full provenance.",
         "operationId": "list_projects",
         "parameters": [
           {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100}, "description": "Max results to return"},
@@ -1076,7 +1076,7 @@
       "get": {
         "tags": ["Ledger - Ecocredits"],
         "summary": "List credit batches",
-        "description": "List issued credit batches (paginated). Options: summary=true returns aggregates by credit type; summary=true&fetch_all=true scans all pages (capped) for complete totals.",
+        "description": "List issued credit batches. Returns up to `limit` results; check `pagination.has_more` for additional pages. Options: summary=true returns aggregates by credit type; summary=true&fetch_all=true scans all pages (capped) for complete totals.",
         "operationId": "list_credit_batches",
         "parameters": [
           {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100}, "description": "Max results to return"},
@@ -1170,7 +1170,7 @@
       "get": {
         "tags": ["Ledger - Marketplace"],
         "summary": "Query sell orders",
-        "description": "Query marketplace sell orders. Use query params to filter:\n- No params: List all active orders\n- ?id=123: Get specific order by ID\n- ?batch=C01-001-...: Filter orders for a credit batch\n- ?seller=regen1...: Filter orders by seller address",
+        "description": "Query marketplace sell orders. Returns up to `limit` results; check `pagination.has_more` for additional pages. Use query params to filter:\n- No params: List all active orders\n- ?id=123: Get specific order by ID\n- ?batch=C01-001-...: Filter orders for a credit batch\n- ?seller=regen1...: Filter orders by seller address",
         "operationId": "query_marketplace_orders",
         "parameters": [
           {"name": "id", "in": "query", "required": false, "schema": {"type": "integer"}, "description": "Get specific order by ID"},
@@ -1234,7 +1234,7 @@
       "get": {
         "tags": ["Ledger - Baskets"],
         "summary": "List baskets",
-        "description": "List ecocredit baskets (pooled credits represented as fungible tokens).",
+        "description": "List ecocredit baskets (pooled credits represented as fungible tokens). Returns up to `limit` results; check `pagination.has_more` for additional pages.",
         "operationId": "list_baskets",
         "parameters": [
           {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100}, "description": "Max results to return"},
@@ -1293,7 +1293,7 @@
       "get": {
         "tags": ["Ledger - Baskets"],
         "summary": "Get basket details",
-        "description": "Get basket details including criteria and credit type. Use ?include_balances=true to see credit batches in the basket.",
+        "description": "Get basket details including criteria and credit type. Use ?include_balances=true to see credit batches in the basket (paginated; check `pagination.has_more` for additional pages).",
         "operationId": "get_basket_details",
         "parameters": [
           {"name": "denom", "in": "path", "required": true, "schema": {"type": "string"}, "description": "Basket token denomination"},
@@ -1328,7 +1328,7 @@
       "get": {
         "tags": ["Ledger - Bank"],
         "summary": "Query accounts",
-        "description": "Query Regen accounts. Options:\n- No params: List all accounts (paginated)\n- ?address=regen1...: Get specific account details",
+        "description": "Query Regen accounts. Returns up to `limit` results; check `pagination.has_more` for additional pages. Options:\n- No params: List all accounts\n- ?address=regen1...: Get specific account details",
         "operationId": "query_bank_accounts",
         "parameters": [
           {"name": "address", "in": "query", "required": false, "schema": {"type": "string"}, "description": "Get specific account by address"},
@@ -1360,7 +1360,7 @@
       "get": {
         "tags": ["Ledger - Bank"],
         "summary": "Get account balances",
-        "description": "Get token balances for an account. Use ?denom=uregen for specific token, ?spendable=true for only spendable balances.",
+        "description": "Get token balances for an account. Returns up to `limit` results; check `pagination.has_more` for additional pages. Use ?denom=uregen for specific token, ?spendable=true for only spendable balances.",
         "operationId": "get_account_balances",
         "parameters": [
           {"name": "address", "in": "path", "required": true, "schema": {"type": "string"}, "description": "Regen account address"},
@@ -1393,7 +1393,7 @@
       "get": {
         "tags": ["Ledger - Bank"],
         "summary": "Query token supply",
-        "description": "Query total token supply. Use ?denom=uregen for specific token supply.",
+        "description": "Query total token supply. Returns up to `limit` results; check `pagination.has_more` for additional pages. Use ?denom=uregen for specific token supply.",
         "operationId": "query_token_supply",
         "parameters": [
           {"name": "denom", "in": "query", "required": false, "schema": {"type": "string"}, "description": "Get supply for specific token"},
@@ -1424,7 +1424,7 @@
       "get": {
         "tags": ["Ledger - Bank"],
         "summary": "Query token metadata",
-        "description": "Query token metadata (name, symbol, decimals). Use ?denom=uregen for specific token.",
+        "description": "Query token metadata (name, symbol, decimals). Returns up to `limit` results; check `pagination.has_more` for additional pages. Use ?denom=uregen for specific token.",
         "operationId": "query_token_metadata",
         "parameters": [
           {"name": "denom", "in": "query", "required": false, "schema": {"type": "string"}, "description": "Get metadata for specific token"},
@@ -1537,7 +1537,7 @@
       "get": {
         "tags": ["Ledger - Distribution"],
         "summary": "Validator distribution info",
-        "description": "Get validator distribution info: outstanding rewards, commission, and slashing events.",
+        "description": "Get validator distribution info: outstanding rewards, commission, and slashing events. Slashes are paginated; check `pagination.has_more` for additional pages.",
         "operationId": "get_validator_distribution",
         "parameters": [
           {"name": "address", "in": "path", "required": true, "schema": {"type": "string"}, "description": "Validator operator address (regenvaloper1...)"},
@@ -1637,7 +1637,7 @@
       "get": {
         "tags": ["Ledger - Governance"],
         "summary": "Query proposals",
-        "description": "Query governance proposals. Filter with ?id=, ?status=, ?voter=, ?depositor= parameters.",
+        "description": "Query governance proposals. Returns up to `limit` results; check `pagination.has_more` for additional pages. Filter with ?id=, ?status=, ?voter=, ?depositor= parameters.",
         "operationId": "query_governance_proposals",
         "parameters": [
           {"name": "id", "in": "query", "required": false, "schema": {"type": "integer"}, "description": "Get specific proposal by ID"},
@@ -1674,7 +1674,7 @@
       "get": {
         "tags": ["Ledger - Governance"],
         "summary": "Full proposal details",
-        "description": "Get comprehensive proposal info including votes, deposits, and tally results.",
+        "description": "Get comprehensive proposal info including votes, deposits, and tally results. Votes and deposits are paginated; check `pagination.has_more` for additional pages.",
         "operationId": "get_proposal_full_details",
         "parameters": [
           {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}, "description": "Proposal ID"},
