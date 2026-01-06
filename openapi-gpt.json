@@ -2563,7 +2563,7 @@
           "Ledger - Ecocredits"
         ],
         "summary": "List credit classes",
-        "description": "List credit classes (methodologies for measuring ecological benefits).",
+        "description": "List credit classes (methodologies for measuring ecological benefits). Returns up to `limit` results; check `pagination.has_more` for additional pages.",
         "operationId": "list_credit_classes",
         "parameters": [
           {
@@ -2639,7 +2639,7 @@
           "Ledger - Ecocredits"
         ],
         "summary": "List projects",
-        "description": "List ecological projects registered on Regen that generate credits. When include_offchain_metrics=true, projects with Regen metadata IRIs will be enriched with hectares derived from off-chain metadata. Enforces 'no citation, no metric' - hectares only appear with full provenance.",
+        "description": "List ecological projects registered on Regen that generate credits. Returns up to `limit` results; check `pagination.has_more` for additional pages. When include_offchain_metrics=true, projects with Regen metadata IRIs will be enriched with hectares derived from off-chain metadata. Enforces 'no citation, no metric' - hectares only appear with full provenance.",
         "operationId": "list_projects",
         "parameters": [
           {
@@ -2726,7 +2726,7 @@
           "Ledger - Ecocredits"
         ],
         "summary": "List credit batches",
-        "description": "List issued credit batches (paginated). Options: summary=true returns aggregates by credit type; summary=true&fetch_all=true scans all pages (capped) for complete totals.",
+        "description": "List issued credit batches. Returns up to `limit` results; check `pagination.has_more` for additional pages. Options: summary=true returns aggregates by credit type; summary=true&fetch_all=true scans all pages (capped) for complete totals.",
         "operationId": "list_credit_batches",
         "parameters": [
           {
@@ -2921,7 +2921,7 @@
           "Ledger - Marketplace"
         ],
         "summary": "Query sell orders",
-        "description": "Query marketplace sell orders. Use query params to filter:\n- No params: List all active orders\n- ?id=123: Get specific order by ID\n- ?batch=C01-001-...: Filter orders for a credit batch\n- ?seller=regen1...: Filter orders by seller address",
+        "description": "Query marketplace sell orders. Returns up to `limit` results; check `pagination.has_more` for additional pages. Use query params to filter:\n- No params: List all active orders\n- ?id=123: Get specific order by ID\n- ?batch=C01-001-...: Filter orders for a credit batch\n- ?seller=regen1...: Filter orders by seller address",
         "operationId": "query_marketplace_orders",
         "parameters": [
           {
@@ -3071,7 +3071,7 @@
           "Ledger - Baskets"
         ],
         "summary": "List baskets",
-        "description": "List ecocredit baskets (pooled credits represented as fungible tokens).",
+        "description": "List ecocredit baskets (pooled credits represented as fungible tokens). Returns up to `limit` results; check `pagination.has_more` for additional pages.",
         "operationId": "list_baskets",
         "parameters": [
           {
@@ -3189,7 +3189,7 @@
           "Ledger - Baskets"
         ],
         "summary": "Get basket details",
-        "description": "Get basket details including criteria and credit type. Use ?include_balances=true to see credit batches in the basket.",
+        "description": "Get basket details including criteria and credit type. Use ?include_balances=true to see credit batches in the basket (paginated; check `pagination.has_more` for additional pages).",
         "operationId": "get_basket_details",
         "parameters": [
           {
@@ -3302,7 +3302,7 @@
           "Ledger - Bank"
         ],
         "summary": "Query accounts",
-        "description": "Query Regen accounts. Options:\n- No params: List all accounts (paginated)\n- ?address=regen1...: Get specific account details",
+        "description": "Query Regen accounts. Returns up to `limit` results; check `pagination.has_more` for additional pages. Options:\n- No params: List all accounts\n- ?address=regen1...: Get specific account details",
         "operationId": "query_bank_accounts",
         "parameters": [
           {
@@ -3386,7 +3386,7 @@
           "Ledger - Bank"
         ],
         "summary": "Get account balances",
-        "description": "Get token balances for an account. Use ?denom=uregen for specific token, ?spendable=true for only spendable balances.",
+        "description": "Get token balances for an account. Returns up to `limit` results; check `pagination.has_more` for additional pages. Use ?denom=uregen for specific token, ?spendable=true for only spendable balances.",
         "operationId": "get_account_balances",
         "parameters": [
           {
@@ -3483,7 +3483,7 @@
           "Ledger - Bank"
         ],
         "summary": "Query token supply",
-        "description": "Query total token supply. Use ?denom=uregen for specific token supply.",
+        "description": "Query total token supply. Returns up to `limit` results; check `pagination.has_more` for additional pages. Use ?denom=uregen for specific token supply.",
         "operationId": "query_token_supply",
         "parameters": [
           {
@@ -3561,7 +3561,7 @@
           "Ledger - Bank"
         ],
         "summary": "Query token metadata",
-        "description": "Query token metadata (name, symbol, decimals). Use ?denom=uregen for specific token.",
+        "description": "Query token metadata (name, symbol, decimals). Returns up to `limit` results; check `pagination.has_more` for additional pages. Use ?denom=uregen for specific token.",
         "operationId": "query_token_metadata",
         "parameters": [
           {
@@ -3693,7 +3693,7 @@
           "Ledger - Distribution"
         ],
         "summary": "Distribution params",
-        "description": "Get distribution module parameters (community tax, base proposer reward, etc.).",
+        "description": "Get distribution module parameters for understanding network economics. **Metrics returned:** Community tax rate (% of rewards to community pool), base/bonus proposer rewards, withdraw address settings. **Use when:** Understanding network tokenomics, calculating expected validator/delegator yields, governance research. **Example use cases:** Yield calculations, protocol economic analysis, comparing with other Cosmos chains.",
         "operationId": "get_distribution_params",
         "responses": {
           "200": {
@@ -3735,7 +3735,7 @@
           "Ledger - Distribution"
         ],
         "summary": "Community pool",
-        "description": "Get community pool balance (funds available for governance spending).",
+        "description": "Get community pool balance (funds available for governance spending). **Metrics returned:** Total pool balance in uregen (1 REGEN = 1,000,000 uregen). **Use when:** Assessing available funds for governance proposals, tracking community treasury growth, planning funding requests. **Example use cases:** Proposal budgeting, treasury analysis, ecosystem funding reports.",
         "operationId": "get_community_pool",
         "responses": {
           "200": {
@@ -3779,7 +3779,7 @@
           "Ledger - Distribution"
         ],
         "summary": "Validator distribution info",
-        "description": "Get validator distribution info: outstanding rewards, commission, and slashing events.",
+        "description": "Get validator distribution info for staking economics analysis. **Metrics returned:** Outstanding rewards (unclaimed), accumulated commission, slashing events history. **Use when:** Evaluating validator performance, checking unclaimed rewards, auditing slashing history, validator comparison. **Example use cases:** Validator selection for delegation, commission income analysis, security incident investigation. Slashes are paginated; check `pagination.has_more` for additional pages.",
         "operationId": "get_validator_distribution",
         "parameters": [
           {
@@ -3895,7 +3895,7 @@
           "Ledger - Distribution"
         ],
         "summary": "Delegator distribution info",
-        "description": "Get delegator staking rewards info. Use ?validator=regenvaloper1... for rewards from specific validator.",
+        "description": "Get delegator staking rewards info for tracking staking income. **Metrics returned:** Rewards by validator, total pending rewards across all delegations, withdrawal address. **Use when:** Checking unclaimed staking rewards, calculating staking income, tax reporting, delegation strategy. **Example use cases:** Portfolio tracking apps, reward harvesting decisions, multi-validator delegation analysis. Use ?validator=regenvaloper1... for rewards from specific validator.",
         "operationId": "get_delegator_distribution",
         "parameters": [
           {
@@ -4043,7 +4043,7 @@
           "Ledger - Governance"
         ],
         "summary": "Query proposals",
-        "description": "Query governance proposals. Filter with ?id=, ?status=, ?voter=, ?depositor= parameters.",
+        "description": "Query governance proposals. Returns up to `limit` results; check `pagination.has_more` for additional pages. Filter with ?id=, ?status=, ?voter=, ?depositor= parameters.",
         "operationId": "query_governance_proposals",
         "parameters": [
           {
@@ -4164,7 +4164,7 @@
           "Ledger - Governance"
         ],
         "summary": "Full proposal details",
-        "description": "Get comprehensive proposal info including votes, deposits, and tally results.",
+        "description": "Get comprehensive proposal info including votes, deposits, and tally results. Votes and deposits are paginated; check `pagination.has_more` for additional pages.",
         "operationId": "get_proposal_full_details",
         "parameters": [
           {
@@ -4291,7 +4291,7 @@
           "Ledger - Analytics"
         ],
         "summary": "Portfolio impact analysis",
-        "description": "Analyze ecological impact of an address's credit holdings.",
+        "description": "Analyze ecological impact of an address's credit holdings. **Metrics returned:** Total credits held, breakdown by credit type (C, BIO, etc.), ecological impact estimates (carbon offset tonnes, biodiversity units). **Use when:** Assessing an address's environmental portfolio, calculating impact for reporting, comparing holder portfolios. **Example use cases:** Investor impact reports, organization sustainability metrics, portfolio diversification analysis.",
         "operationId": "analyze_portfolio_impact",
         "parameters": [
           {
@@ -4360,7 +4360,7 @@
           "Ledger - Analytics"
         ],
         "summary": "Market trends",
-        "description": "Analyze market trends across credit types. Call without parameters for all credit types.",
+        "description": "Analyze market trends across credit types. **Metrics returned:** Trading volume, average prices, price trends, market activity by credit type over specified time period. **Use when:** Monitoring market health, identifying trending credit types, price discovery, market research. **Example use cases:** Market reports, trading strategy analysis, credit type popularity comparisons. Call without parameters for all credit types.",
         "operationId": "analyze_market_trends",
         "parameters": [
           {
@@ -4433,7 +4433,7 @@
           "Ledger - Analytics"
         ],
         "summary": "Compare methodologies",
-        "description": "Compare different credit class methodologies for impact efficiency.",
+        "description": "Compare different credit class methodologies for impact efficiency. **Metrics returned:** Project counts, total credits issued/retired per class, methodology details, impact efficiency metrics. **Use when:** Evaluating which credit class best fits a project, comparing impact verification approaches, methodology research. **Example use cases:** Project developers choosing methodologies, buyers comparing credit quality, researchers analyzing ecosystem health.",
         "operationId": "compare_credit_methodologies",
         "requestBody": {
           "content": {
@@ -4527,7 +4527,7 @@
           "Knowledge - Search"
         ],
         "summary": "Semantic knowledge search",
-        "description": "Search the Regen Network knowledge base using hybrid semantic search. Returns relevant documents about regenerative agriculture, Regen Network, ecological credits, and related topics. Results include confidence scores and source citations.",
+        "description": "Search the Regen Network knowledge base using hybrid semantic search (vector + keyword + graph-boosted retrieval). Returns relevant documents about regenerative agriculture, Regen Network, ecological credits, and related topics. **IMPORTANT: The `score` field in results represents RETRIEVAL RELEVANCE (how well a result matches the query), NOT factual accuracy or truth. High scores indicate good semantic/keyword match, not verified facts.** Results include source citations (rid, url) for verification. Use `intent` parameter for specialized retrieval profiles (e.g., person_activity for 'what is X working on?').",
         "operationId": "koi_semantic_search",
         "requestBody": {
           "content": {
@@ -4763,7 +4763,7 @@
           "Knowledge - Digest"
         ],
         "summary": "Weekly digest - USE FOR 'this week', 'past week', 'recent news', 'what's happening'",
-        "description": "Weekly digest of recent Regen Network activity. Use for questions like \u201cthis week\u201d, \u201cpast week\u201d, \u201crecent news\u201d, \u201cwhat\u2019s happening\u201d, or \u201cweekly update\u201d. Returns curated highlights across governance, community, and ecosystem.",
+        "description": "Weekly digest of recent Regen Network activity. **Sources:** Discourse forum discussions, GitHub activity (commits, PRs, issues), on-chain governance proposals/votes, credit issuance/retirement metrics, and community channels. **Use for:** 'this week', 'past week', 'recent news', 'what's happening', 'weekly update', team briefings, stakeholder updates. **Returns:** Curated highlights with executive summary, governance analysis, community discussions, and on-chain metrics. Date range defaults to past 7 days.",
         "operationId": "koi_weekly_digest",
         "responses": {
           "200": {
