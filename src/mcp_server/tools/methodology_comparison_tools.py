@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from ..client.regen_client import get_regen_client
+from ..client.metadata_graph_client import resolve_metadata_summary
 from ..models.methodology import (
     BuyerPreset,
     CriterionScore,
@@ -66,6 +67,14 @@ async def get_methodology_metadata(credit_class_id: str) -> MethodologyMetadata:
     if not credit_class:
         raise ValueError(f"Credit class {credit_class_id} not found")
 
+    # Resolve human-readable name from the on-chain metadata IRI (schema:name)
+    resolved_name: Optional[str] = None
+    metadata_iri = credit_class.get("metadata")
+    if isinstance(metadata_iri, str) and metadata_iri:
+        summary = await resolve_metadata_summary(metadata_iri)
+        if summary and isinstance(summary.get("name"), str):
+            resolved_name = summary["name"]
+
     # Query projects for this class
     projects_response = await client.query_projects()
     projects = projects_response.get('projects', [])
@@ -82,7 +91,7 @@ async def get_methodology_metadata(credit_class_id: str) -> MethodologyMetadata:
     return MethodologyMetadata(
         methodology_id=credit_class_id,
         credit_class_id=credit_class_id,
-        methodology_name=credit_class.get("metadata", f"Credit Class {credit_class_id}"),
+        methodology_name=resolved_name or f"Credit Class {credit_class_id}",
         developer=credit_class.get("admin", "Unknown"),
         methodology_type=_infer_methodology_type(credit_class_id),
         status="active",

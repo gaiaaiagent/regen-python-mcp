@@ -1,9 +1,11 @@
 """Credit-related tools for Regen Network MCP server."""
 
+import asyncio
 import logging
 from typing import Dict, Any
 
 from ..client.regen_client import get_regen_client, Pagination
+from ..client.metadata_graph_client import resolve_metadata_summary
 from ..models.credit import (
     CreditType, 
     CreditClass, 
@@ -96,13 +98,25 @@ async def list_credit_classes(
         response = await client.query_credit_classes(pagination)
         
         # Parse credit classes from response
+        class_rows = response.get("classes", [])
+        summaries = await asyncio.gather(
+            *[
+                resolve_metadata_summary((class_data or {}).get("metadata", ""))
+                for class_data in class_rows
+            ],
+            return_exceptions=True,
+        )
+
         classes = []
-        for class_data in response.get("classes", []):
+        for class_data, summary_result in zip(class_rows, summaries):
+            summary = summary_result if isinstance(summary_result, dict) else None
             credit_class = CreditClass(
                 id=class_data.get("id", ""),
                 admin=class_data.get("admin", ""),
                 metadata=class_data.get("metadata", ""),
-                credit_type_abbrev=class_data.get("credit_type_abbrev", "")
+                credit_type_abbrev=class_data.get("credit_type_abbrev", ""),
+                name=(summary.get("name") if summary else None),
+                source_registry=(summary.get("source_registry") if summary else None),
             )
             classes.append(credit_class)
 

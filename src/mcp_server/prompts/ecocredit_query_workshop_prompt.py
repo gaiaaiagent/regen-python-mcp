@@ -49,7 +49,7 @@ Let's explore all aspects of Regen's ecological credit system!
 The eco credit module manages tokenized ecological assets representing real-world environmental benefits.
 
 **🌍 Key Concepts:**
-• **Credit Class**: Methodology for measuring ecological benefit (e.g., C01 for reforestation)
+• **Credit Class**: Methodology / program definition (e.g., C01 = Verified Carbon Standard)
 • **Project**: Real-world initiative generating credits (e.g., a forest in Costa Rica)
 • **Batch**: Specific issuance of credits with vintage period
 • **Denom**: Unique identifier for each credit batch
@@ -62,22 +62,20 @@ Credit classes define HOW ecological benefits are measured and verified.
 
 **Basic Queries:**
 ```python
-# List all credit classes
-classes = get_credit_classes()
-for cls in classes:
-    print(f"{{cls['id']}}: {{cls['name']}}")
+# List all credit classes (names are resolved from on-chain metadata IRIs)
+result = list_classes(limit=100, offset=0)
+for cls in result.get("classes", []):
+    print(f"{{cls['id']}}: {{cls.get('name')}}")
 
-# Get specific class details
-c01 = get_credit_class('C01')
-print(f"Methodology: {{c01['credit_type']}}")
-print(f"Admin: {{c01['admin']}}")
+# Filter down to one class by ID
+c01 = next((c for c in result.get("classes", []) if c.get("id") == "C01"), None)
+print(c01)
 ```
 
 **Common Credit Classes:**
-• **C01**: Carbon Sequestration through Reforestation
-• **C02**: Soil Carbon Sequestration
-• **C03**: Blue Carbon (Coastal/Marine)
-• **BIO01**: Biodiversity Conservation
+• **C01**: Verified Carbon Standard
+• **C02**: Urban Forest Carbon Credit Class (source registry: City Forest Credits)
+• **C07**: CarbonPlus Grasslands Credit Class
 
 ---
 

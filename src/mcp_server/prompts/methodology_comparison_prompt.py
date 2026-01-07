@@ -237,11 +237,9 @@ for result in results:
 • `eu_risk_sensitive` - Leakage + Traceability focus
 • `net_zero` - Co-Benefits + Cost + Permanence focus
 
-**Common Methodology IDs:**
-• `C01` - Reforestation and afforestation projects
-• `C02` - Soil carbon sequestration (agriculture)
-• `C03` - Blue carbon (coastal/marine ecosystems)
-• `BIO01` - Biodiversity conservation
+**Credit Class IDs:**
+Use `list_classes()` to see the current set of credit classes and their resolved names.
+Examples: `C01` (Verified Carbon Standard), `C02` (Urban Forest Carbon Credit Class), `C07` (CarbonPlus Grasslands Credit Class), `BT01`, `MBS01`, `USS01`, `KSH01`.
 
 **Performance Target:**
 • Single methodology: ~2-5 seconds

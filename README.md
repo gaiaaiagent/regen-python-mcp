@@ -71,6 +71,15 @@ The client includes hardened retry/backoff logic:
 - All errors include `retryable` and `retry_after_ms` fields for downstream clients
 - `fetch_all_pages()` helper eliminates agent-side pagination loops
 
+### 🏷️ **Credit Class Name Resolution (v3.2)**
+
+Credit class names are now resolved directly from on-chain anchored metadata IRIs:
+
+- **Authoritative names**: `schema:name` from `https://api.regen.network/data/v2/metadata-graph/{iri}`
+- **Source registry**: Extracts `regen:sourceRegistry` (e.g., "City Forest Credits" for C02)
+- **Caching**: 1-hour TTL for resolved metadata, 5-minute TTL for failures
+- **No guessing**: Class names like C01="Verified Carbon Standard" come from the chain, not hardcoded mappings
+
 ### 📊 **Summary Mode**
 
 The `/ecocredits/batches` endpoint supports aggregation:

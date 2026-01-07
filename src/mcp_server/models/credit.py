@@ -7,6 +7,13 @@ from pydantic import Field
 from .schemas import BaseRegenModel, CreditType, Location, BatchInfo
 
 
+class SourceRegistry(BaseRegenModel):
+    """Source registry information resolved from credit class metadata."""
+
+    name: Optional[str] = Field(default=None, description="Source registry name")
+    url: Optional[str] = Field(default=None, description="Source registry URL")
+
+
 class CreditClass(BaseRegenModel):
     """Credit class model matching actual API response."""
 
@@ -14,6 +21,14 @@ class CreditClass(BaseRegenModel):
     admin: str = Field(description="Class administrator address")
     metadata: str = Field(description="Class metadata")
     credit_type_abbrev: str = Field(description="Credit type abbreviation")
+    name: Optional[str] = Field(
+        default=None,
+        description="Resolved class name from metadata IRI (schema:name)",
+    )
+    source_registry: Optional[SourceRegistry] = Field(
+        default=None,
+        description="Resolved source registry from metadata IRI (regen:sourceRegistry)",
+    )
 
 
 class Project(BaseRegenModel):

@@ -138,6 +138,7 @@ Query `/regen-api/ecocredits/types` for current credit types — this data is li
 
 ## Source Hygiene (Important)
 
+- **Cite ALL sources you used**: If a source informed any part of your response, include it. Don't cherry-pick 1-2 when you used 5.
 - Prefer primary, human-facing sources for citations: forum threads/posts, GitHub markdown docs, Notion pages, official web pages.
 - Avoid citing derived crawl dumps or internal storage artifacts (e.g., GitHub paths like `koi-sensors/.../storage/*_crawl_*.json`) unless the user explicitly asks about that file.
 

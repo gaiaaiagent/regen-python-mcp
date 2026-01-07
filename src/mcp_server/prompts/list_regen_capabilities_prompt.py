@@ -278,11 +278,12 @@ async def analyze_with_advanced_tools():
 
 ## 🌍 **Credit Class Reference**
 
-• **C01** - Carbon Sequestration through Reforestation
-• **C02** - Soil Carbon Sequestration  
-• **C03** - Blue Carbon (Coastal/Marine Ecosystems)
-• **C04** - Avoided Emissions (Renewable Energy)
-• **BIO01** - Biodiversity Conservation Credits
+Credit class names are resolved from on-chain metadata IRIs. Use `list_classes()` and read the `name` field.
+
+Common examples on Regen mainnet:
+• **C01** — Verified Carbon Standard (source registry: Verra)
+• **C02** — Urban Forest Carbon Credit Class (source registry: City Forest Credits)
+• **C07** — CarbonPlus Grasslands Credit Class
 
 ---
 

@@ -135,6 +135,21 @@ class TestCreditToolsOnline:
             assert len(carbon_classes) > 0, \
                 f"Should have carbon classes. Got: {class_ids}"
 
+    async def test_live_list_classes_resolves_offchain_names(self):
+        """Credit class names should be resolved from on-chain metadata IRIs (schema:name)."""
+        result = await list_credit_classes(limit=1000, offset=0)
+
+        classes = {c.get("id"): c for c in result.get("classes", [])}
+        assert "C01" in classes and "C02" in classes and "C07" in classes
+
+        assert classes["C01"].get("name") == "Verified Carbon Standard"
+        assert classes["C02"].get("name") == "Urban Forest Carbon Credit Class"
+        assert classes["C07"].get("name") == "CarbonPlus Grasslands Credit Class"
+
+        # C02 source registry should resolve to City Forest Credits
+        source_registry = classes["C02"].get("source_registry") or {}
+        assert source_registry.get("name") == "City Forest Credits"
+
 
 @pytest.mark.asyncio
 @pytest.mark.tools

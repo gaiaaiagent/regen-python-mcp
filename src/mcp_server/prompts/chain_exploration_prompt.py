@@ -57,10 +57,11 @@ get_node_info()            # Node connection details
 
 **2. Explore Credit Classes**
 ```python
-get_credit_classes()        # List all credit methodologies
-get_credit_class('C01')    # Specific class details
-# C01 = Carbon Sequestration through Reforestation
-# C02 = Soil Carbon Sequestration
+classes = list_classes(limit=100, offset=0)  # List all credit classes (includes resolved names)
+# Each class includes:
+# - id (e.g., "C01")
+# - name (resolved from the on-chain metadata IRI)
+# - source_registry (when available, e.g., City Forest Credits)
 ```
 
 **3. Discover Projects**

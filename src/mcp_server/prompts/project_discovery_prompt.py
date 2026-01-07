@@ -337,11 +337,8 @@ comparison = compare_projects(['C01-001', 'C01-002', 'C01-003'])
 ## 🌍 **Project Categories & Types**
 
 ### By Methodology
-• **C01 - Reforestation**: Tree planting and forest restoration
-• **C02 - Soil Carbon**: Agricultural practices for soil improvement
-• **C03 - Blue Carbon**: Coastal and marine ecosystems
-• **C04 - Renewable Energy**: Clean energy generation
-• **BIO01 - Biodiversity**: Habitat conservation and species protection
+Use `list_classes()` to see the current set of credit classes and their resolved names.
+Examples: **C01** (Verified Carbon Standard), **C02** (Urban Forest Carbon Credit Class), **C07** (CarbonPlus Grasslands Credit Class), **BT01**, **MBS01**, **USS01**, **KSH01**.
 
 ### By Geography
 • **North America**: US, Canada, Mexico

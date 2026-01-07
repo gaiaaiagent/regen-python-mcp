@@ -185,6 +185,7 @@ class RegenClient:
         
         # HTTP client with connection pooling
         self._http_client: Optional[httpx.AsyncClient] = None
+        self._http_client_loop: Optional[asyncio.AbstractEventLoop] = None
         self._current_rpc_index = 0
         self._current_rest_index = 0
         
@@ -195,6 +196,29 @@ class RegenClient:
     
     async def _get_http_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client with connection pooling."""
+        loop = asyncio.get_running_loop()
+
+        # The RegenClient is a singleton, but pytest-asyncio (and some runtimes) may
+        # create a new event loop per test/function. httpx transports are bound to
+        # the loop they were created in, so we recreate the client if the loop
+        # changes (or if the previous loop has been closed).
+        if self._http_client is not None:
+            if getattr(self._http_client, "is_closed", False):
+                self._http_client = None
+                self._http_client_loop = None
+            elif self._http_client_loop is not None and self._http_client_loop is not loop:
+                # If the previous loop has already been closed (common in pytest-asyncio
+                # with per-test event loops), attempting to close the client can raise
+                # "Event loop is closed". In that case, just drop the client and
+                # recreate it for the current loop.
+                if getattr(self._http_client_loop, "is_closed", lambda: False)():
+                    self._http_client = None
+                    self._http_client_loop = None
+                else:
+                    await self._http_client.aclose()
+                    self._http_client = None
+                    self._http_client_loop = None
+
         if self._http_client is None:
             limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
             timeout = httpx.Timeout(
@@ -210,6 +234,7 @@ class RegenClient:
                 headers={"User-Agent": "regen-python-mcp/0.1.0"},
                 follow_redirects=True,
             )
+            self._http_client_loop = loop
         
         return self._http_client
     
