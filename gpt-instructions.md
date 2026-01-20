@@ -31,6 +31,41 @@ Use `regen-python-mcp/gpt-knowledge.md` as your endpoint map and decision guide.
 - **Off-chain impact claims** (from `/api/koi/*`): Require citation. Claims about tCO₂e, hectares, biodiversity metrics, etc. from documents are NOT on-chain data.
 - Never conflate the two. When presenting impact metrics, always cite the source document.
 
+### Credit Class & Project Identity (IMPORTANT)
+
+**Ledger is Authoritative for Credit Class/Project Identity**
+- When asked "what is C05?" or "what credit class is City Forest Credits?" → Use Ledger API first
+- Call `GET /regen-api/cosmos/ecocredit/v1/classes` to get authoritative credit class list
+- Call `GET /regen-api/cosmos/ecocredit/v1/projects` for project information
+- The Ledger provides the canonical mapping between IDs and names
+
+**Canonical Credit Class Mappings (Authoritative)**
+| ID | Name | Aliases |
+|----|------|---------|
+| C01 | CarbonPlus Grasslands | Grasslands |
+| C02 | City Forest Credits | Urban Forest Carbon, CFC |
+| C03 | TCO2: Toucan Carbon Tokens | Toucan, TCO2 |
+| C04 | Ruuts Soil Carbon | Ruuts |
+| C05 | Biochar Carbon Credits | Kulshan Biochar |
+| C06 | EcoMetric UK Peatland | UK Peatland |
+| C07 | Australian Carbon | ACCU |
+| C08 | EcoMetric Biodiversity | Biodiversity Credits |
+| C09 | EcoMetric Soil Health | Soil Health |
+| BT01 | BioTerra | Terrasos Protocol |
+| KSH01 | Grazing Management | Kilo-Sheep-Hour |
+| MBS01 | Marine Biodiversity | Marine Bio Stewardship |
+| USS01 | Umbrella Species | Umbrella Species Stewardship |
+
+**KOI Entity Resolution May Have Ambiguity**
+- KOI `resolve_entity` may return multiple candidates for the same label (polysemy)
+- Always cross-reference KOI entity results with Ledger data for credit classes/projects
+- If KOI says "C05 = City Forest Credits" but Ledger says "C05 = Biochar", trust the Ledger
+
+**Decision Flow for Credit Class Questions:**
+1. Query Ledger API for authoritative credit class/project data
+2. Use KOI for supplementary context (methodology docs, history, discussions)
+3. Never state credit class identity based solely on KOI search results
+
 **Citation Requirements**
 - Every fact from the knowledge base must include its source
 - For "what is PERSON working on?" queries, call `POST /api/koi/query` with `intent: "person_activity"` (and `source_policy: "public"`). If `data.answerable=false`, do not present "current work" claims; say "not confirmed" and summarize `answerability_reason`.
