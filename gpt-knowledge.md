@@ -20,6 +20,7 @@ If a call fails without a `request_id`, assume the Action was not actually invok
 - `GET /regen-api/ecocredits/classes` — All credit classes
 - `GET /regen-api/ecocredits/projects` — All registered projects
 - `GET /regen-api/ecocredits/batches` — All issued credit batches with quantities
+- `GET /regen-api/ecocredits/classes/{class_id}/supply` — Retirement & supply stats for a credit class (total_issued, total_retired, retirement_rate_pct, per-batch breakdown)
 
 **Marketplace**
 - `GET /regen-api/marketplace/orders` — Active sell orders (credits for sale)
@@ -72,6 +73,8 @@ Notes:
 |---------------------------|-------------------|
 | Credits for sale / marketplace | `GET /regen-api/marketplace/orders` |
 | How many credits exist | `GET /regen-api/ecocredits/batches` |
+| How many [X] credits have been retired? | `GET /regen-api/ecocredits/classes/{class_id}/supply` |
+| Retirement rate for [credit class]? | `GET /regen-api/ecocredits/classes/{class_id}/supply` |
 | What credit types exist | `GET /regen-api/ecocredits/types` |
 | List of projects | `GET /regen-api/ecocredits/projects` |
 | Governance proposals | `GET /regen-api/governance/proposals` |
@@ -80,6 +83,68 @@ Notes:
 | What is [concept] | `POST /api/koi/query` |
 | How does [thing] work | `POST /api/koi/query` |
 | What is [person] working on | `POST /api/koi/query` with `intent="person_activity"` |
+| **[Specific name] credit class/project** | **FIRST** resolve via `POST /api/koi/entity`, then use resolved ID |
+
+## Entity Resolution (CRITICAL)
+
+When a user asks about a **specific credit class, project, or organization by NAME** (not by ID), you MUST:
+
+1. **First**, call `/api/koi/entity` with `query_type: "resolve"` to get the canonical ID
+2. **Then**, use that ID to query the ledger API
+
+### Why This Matters
+
+Names in the ecosystem can be ambiguous:
+- "City Forest Credits" → C05 (the credit class ID)
+- "Wilmot Woods" → C05-001 (a project ID)
+- "Terrasos" → Organization that administers C04
+
+Without resolution, you'll search the knowledge base by name and likely get wrong results (e.g., returning documents about different projects that happen to mention similar words).
+
+### Example: "What is City Forest Credits?"
+
+**WRONG approach** (leads to hallucinations):
+```
+POST /api/koi/query {"question": "City Forest Credits"}
+→ Returns documents about many different things, possibly wrong projects
+```
+
+**CORRECT approach**:
+```
+Step 1: POST /api/koi/entity {"query_type": "resolve", "label": "City Forest Credits"}
+→ Returns: {"winner": {"entity_text": "C05", "entity_type": "CREDIT_CLASS", ...}}
+
+Step 2: GET /regen-api/ecocredits/classes (find C05 in results)
+→ Returns authoritative on-chain data for C05
+```
+
+### When to Use Entity Resolution
+
+| Query pattern | Action |
+|---------------|--------|
+| "What is [NAME]?" where NAME could be a credit/project/org | Resolve first |
+| "Tell me about [NAME]" | Resolve first |
+| "Show credits from [NAME]" | Resolve first |
+| "What is regenerative agriculture?" | Skip - this is a concept, not an entity |
+| "List all projects" | Skip - no specific entity to resolve |
+| "What is C05?" | Skip - already an ID, no resolution needed |
+
+### Entity Resolution Endpoint
+
+```
+POST /api/koi/entity
+Body: {
+  "query_type": "resolve",
+  "label": "City Forest Credits",
+  "type_hint": "CREDIT_CLASS"  // optional: helps disambiguate
+}
+```
+
+Returns:
+- `winner.entity_text` - The canonical ID (e.g., "C05")
+- `winner.entity_type` - CREDIT_CLASS, PROJECT, or ORGANIZATION
+- `winner.name` - Human-readable name from metadata
+- `candidates` - Other possible matches if ambiguous
 
 ## Understanding the Data
 
@@ -103,6 +168,12 @@ Query `/regen-api/ecocredits/types` for current credit types — this data is li
 
 **"How many credits exist?"**
 → `/regen-api/ecocredits/batches` shows all issued batches with quantities
+
+**"How many [X] credits have been retired?"**
+→ `/regen-api/ecocredits/classes/{class_id}/supply` — returns total_retired, total_tradable, retirement_rate_pct for the class
+
+**"What is the retirement rate for [credit class]?"**
+→ `/regen-api/ecocredits/classes/{class_id}/supply` — retirement_rate_pct field in supply object
 
 **"What's for sale?"**
 → `/regen-api/marketplace/orders` lists active sell orders

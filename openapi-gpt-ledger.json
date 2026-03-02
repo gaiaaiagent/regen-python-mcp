@@ -2915,6 +2915,73 @@
         }
       }
     },
+    "/regen-api/ecocredits/classes/{class_id}/supply": {
+      "get": {
+        "tags": [
+          "Ledger - Ecocredits"
+        ],
+        "summary": "Get supply and retirement data for a credit class",
+        "description": "Get aggregated supply, tradable, and retired amounts for all batches in a credit class. Use this to answer: 'How many MBS01 credits have been retired?', 'What is the retirement rate for C01?', 'How many credits are tradable vs retired?'",
+        "operationId": "getCreditClassSupply",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Credit class ID (e.g., MBS01, C01, BT01)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Supply data for the credit class",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "class_id": { "type": "string" },
+                    "project_count": { "type": "integer" },
+                    "batch_count": { "type": "integer" },
+                    "supply": {
+                      "type": "object",
+                      "properties": {
+                        "total_issued": { "type": "number" },
+                        "total_tradable": { "type": "number" },
+                        "total_retired": { "type": "number" },
+                        "total_cancelled": { "type": "number" },
+                        "retirement_rate_pct": { "type": "number" }
+                      }
+                    },
+                    "batches": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "denom": { "type": "string" },
+                          "project_id": { "type": "string" },
+                          "total_amount": { "type": "number" },
+                          "tradable_amount": { "type": "number" },
+                          "retired_amount": { "type": "number" },
+                          "cancelled_amount": { "type": "number" },
+                          "start_date": { "type": "string" },
+                          "end_date": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Credit class not found"
+          }
+        }
+      }
+    },
     "/regen-api/marketplace/orders": {
       "get": {
         "tags": [

@@ -281,3 +281,72 @@ async def list_credit_batches(
             batches=[]
         )
         return error_result.dict()
+
+
+async def get_credit_class_supply(class_id: str) -> Dict[str, Any]:
+    """Get aggregated supply/retirement data for all batches in a credit class.
+
+    Args:
+        class_id: Credit class ID (e.g., "MBS01", "C01", "BT01")
+
+    Returns:
+        dict: Aggregated totals (total_issued, total_tradable, total_retired,
+              retirement_rate_pct) plus per-batch breakdown.
+    """
+    try:
+        client = get_regen_client()
+        pagination = Pagination(limit=1000, offset=0)
+
+        # Get all projects and filter to this class
+        projects_response = await client.query_projects(pagination)
+        class_projects = [
+            p for p in projects_response.get("projects", [])
+            if p.get("class_id") == class_id
+        ]
+        if not class_projects:
+            return {"error": f"Credit class '{class_id}' not found or has no projects"}
+
+        # Get all batches and filter to this class via project_id
+        batches_response = await client.query_credit_batches(pagination)
+        project_ids = {p["id"] for p in class_projects}
+        class_batches = [
+            b for b in batches_response.get("batches", [])
+            if b.get("project_id") in project_ids
+        ]
+
+        # Aggregate supply (raw batch response includes tradable_amount, retired_amount, etc.)
+        total_issued = sum(float(b.get("total_amount", 0)) for b in class_batches)
+        total_tradable = sum(float(b.get("tradable_amount", 0)) for b in class_batches)
+        total_retired = sum(float(b.get("retired_amount", 0)) for b in class_batches)
+        total_cancelled = sum(float(b.get("cancelled_amount", 0)) for b in class_batches)
+        retirement_rate = (total_retired / total_issued * 100) if total_issued > 0 else 0
+
+        return {
+            "class_id": class_id,
+            "project_count": len(class_projects),
+            "batch_count": len(class_batches),
+            "supply": {
+                "total_issued": total_issued,
+                "total_tradable": total_tradable,
+                "total_retired": total_retired,
+                "total_cancelled": total_cancelled,
+                "retirement_rate_pct": round(retirement_rate, 2),
+            },
+            "batches": [
+                {
+                    "denom": b.get("denom"),
+                    "project_id": b.get("project_id"),
+                    "total_amount": float(b.get("total_amount", 0)),
+                    "tradable_amount": float(b.get("tradable_amount", 0)),
+                    "retired_amount": float(b.get("retired_amount", 0)),
+                    "cancelled_amount": float(b.get("cancelled_amount", 0)),
+                    "start_date": b.get("start_date"),
+                    "end_date": b.get("end_date"),
+                }
+                for b in class_batches
+            ],
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting credit class supply for {class_id}: {str(e)}")
+        return {"error": f"Failed to query credit class supply: {str(e)}"}

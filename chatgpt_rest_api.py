@@ -563,6 +563,28 @@ async def list_credit_batches(
     return result
 
 
+@app.get(
+    "/ecocredits/classes/{class_id}/supply",
+    summary="Get supply and retirement data for a credit class",
+    tags=["Ecocredits"],
+)
+async def get_credit_class_supply(class_id: str):
+    """Get aggregated supply, tradable, and retired amounts for all batches in a credit class.
+
+    Use this to answer questions like:
+    - "How many MBS01 credits have been retired?"
+    - "What is the retirement rate for C01?"
+    - "How many credits are tradable vs retired for MBS01?"
+
+    Returns total_issued, total_tradable, total_retired, retirement_rate_pct,
+    and a per-batch breakdown.
+    """
+    result = await credit_tools.get_credit_class_supply(class_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
 # ============================================================================
 # Baskets Module Endpoints (5)
 # ============================================================================

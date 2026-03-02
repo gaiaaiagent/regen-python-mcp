@@ -221,10 +221,10 @@ app = FastAPI(
 
 ## Full Functionality in 25 Endpoints
 
-This API consolidates 45+ queries into 25 smart endpoints using query parameters:
+This API consolidates 45+ queries into 26 smart endpoints using query parameters:
 
 ### Modules
-- **Ecocredits** (4): Credit types, classes, projects, batches
+- **Ecocredits** (5): Credit types, classes, projects, batches, class supply/retirement
 - **Marketplace** (2): Sell orders (flexible filtering), allowed denoms
 - **Baskets** (3): Basket tokens with optional balance inclusion
 - **Bank** (5): Accounts, balances, supply, metadata, params
@@ -326,10 +326,10 @@ async def api_info():
     return {
         "name": "Regen Network API v2",
         "version": "2.0.0",
-        "description": "Full Regen Network blockchain access - 45 queries consolidated into 25 endpoints",
-        "endpoints": 25,
+        "description": "Full Regen Network blockchain access - 45 queries consolidated into 26 endpoints",
+        "endpoints": 26,
         "modules": {
-            "ecocredits": 4,
+            "ecocredits": 5,
             "marketplace": 2,
             "baskets": 3,
             "bank": 5,
@@ -390,7 +390,8 @@ async def get_api_summary():
                     "GET /regen-api/ecocredits/types": "List all credit types (Carbon, Biodiversity, etc.)",
                     "GET /regen-api/ecocredits/classes": "List credit classes (methodologies)",
                     "GET /regen-api/ecocredits/projects": "List registered ecological projects",
-                    "GET /regen-api/ecocredits/batches": "List issued credit batches with supply info"
+                    "GET /regen-api/ecocredits/batches": "List issued credit batches with supply info",
+                    "GET /regen-api/ecocredits/classes/{class_id}/supply": "Retirement & supply stats for a credit class (total_retired, retirement_rate_pct)"
                 }
             },
             "marketplace": {
@@ -813,6 +814,42 @@ async def list_credit_batches(
         request_id=get_request_id(),
         data_source=DataSource.ON_CHAIN,
         pagination=pagination,
+    )
+
+
+@app.get(
+    "/ecocredits/classes/{class_id}/supply",
+    summary="Get supply and retirement data for a credit class",
+    tags=["Ecocredits"],
+)
+async def get_credit_class_supply(class_id: str):
+    """Get aggregated supply, tradable, and retired amounts for all batches in a credit class.
+
+    Use this to answer questions like:
+    - "How many MBS01 credits have been retired?"
+    - "What is the retirement rate for C01?"
+    - "How many credits are tradable vs retired for MBS01?"
+
+    Returns total_issued, total_tradable, total_retired, retirement_rate_pct,
+    and a per-batch breakdown.
+    """
+    start_time = time.time()
+    result = await credit_tools.get_credit_class_supply(class_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+
+    trace = create_tool_trace(
+        tool="get_credit_class_supply",
+        params={"class_id": class_id},
+        data_source=DataSource.ON_CHAIN,
+        duration_ms=(time.time() - start_time) * 1000
+    )
+    add_tool_trace(trace)
+
+    return create_envelope(
+        data=result,
+        request_id=get_request_id(),
+        data_source=DataSource.ON_CHAIN,
     )
 
 
