@@ -286,6 +286,9 @@ async def list_credit_batches(
 async def get_credit_class_supply(class_id: str) -> Dict[str, Any]:
     """Get aggregated supply/retirement data for all batches in a credit class.
 
+    Fetches batch metadata then queries per-batch supply endpoints in parallel
+    to get actual tradable/retired/cancelled amounts.
+
     Args:
         class_id: Credit class ID (e.g., "MBS01", "C01", "BT01")
 
@@ -314,14 +317,45 @@ async def get_credit_class_supply(class_id: str) -> Dict[str, Any]:
             if b.get("project_id") in project_ids
         ]
 
-        # Aggregate supply (raw batch response includes tradable_amount, retired_amount, etc.)
-        total_issued = sum(float(b.get("total_amount", 0)) for b in class_batches)
-        total_tradable = sum(float(b.get("tradable_amount", 0)) for b in class_batches)
-        total_retired = sum(float(b.get("retired_amount", 0)) for b in class_batches)
-        total_cancelled = sum(float(b.get("cancelled_amount", 0)) for b in class_batches)
+        # Fetch supply data for each batch in parallel (supply is a separate endpoint)
+        batch_denoms = [b.get("denom") for b in class_batches if b.get("denom")]
+        supplies_result = await client.query_batch_supplies_bulk(batch_denoms)
+        supplies = supplies_result.get("supplies", {})
+
+        # Aggregate supply from per-batch supply responses
+        total_issued = 0.0
+        total_tradable = 0.0
+        total_retired = 0.0
+        total_cancelled = 0.0
+
+        batch_details = []
+        for b in class_batches:
+            denom = b.get("denom")
+            supply = supplies.get(denom, {})
+            tradable = float(supply.get("tradable_amount", 0))
+            retired = float(supply.get("retired_amount", 0))
+            cancelled = float(supply.get("cancelled_amount", 0))
+            issued = tradable + retired + cancelled
+
+            total_issued += issued
+            total_tradable += tradable
+            total_retired += retired
+            total_cancelled += cancelled
+
+            batch_details.append({
+                "denom": denom,
+                "project_id": b.get("project_id"),
+                "total_amount": issued,
+                "tradable_amount": tradable,
+                "retired_amount": retired,
+                "cancelled_amount": cancelled,
+                "start_date": b.get("start_date"),
+                "end_date": b.get("end_date"),
+            })
+
         retirement_rate = (total_retired / total_issued * 100) if total_issued > 0 else 0
 
-        return {
+        result = {
             "class_id": class_id,
             "project_count": len(class_projects),
             "batch_count": len(class_batches),
@@ -332,20 +366,14 @@ async def get_credit_class_supply(class_id: str) -> Dict[str, Any]:
                 "total_cancelled": total_cancelled,
                 "retirement_rate_pct": round(retirement_rate, 2),
             },
-            "batches": [
-                {
-                    "denom": b.get("denom"),
-                    "project_id": b.get("project_id"),
-                    "total_amount": float(b.get("total_amount", 0)),
-                    "tradable_amount": float(b.get("tradable_amount", 0)),
-                    "retired_amount": float(b.get("retired_amount", 0)),
-                    "cancelled_amount": float(b.get("cancelled_amount", 0)),
-                    "start_date": b.get("start_date"),
-                    "end_date": b.get("end_date"),
-                }
-                for b in class_batches
-            ],
+            "batches": batch_details,
         }
+
+        warnings = supplies_result.get("warnings", [])
+        if warnings:
+            result["warnings"] = warnings
+
+        return result
 
     except Exception as e:
         logger.error(f"Error getting credit class supply for {class_id}: {str(e)}")
