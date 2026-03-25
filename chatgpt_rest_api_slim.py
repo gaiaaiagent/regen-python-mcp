@@ -4,6 +4,7 @@
 Focuses on the most useful Regen Network queries for a Custom GPT.
 """
 
+import os
 import sys
 import logging
 import asyncio
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 # Off-chain Metadata Enrichment Configuration (Session E)
 # =============================================================================
 KOI_API_ENDPOINT = "https://regen.gaiaai.xyz/api/koi"
+KOI_INTERNAL_API_KEY = os.environ.get("KOI_INTERNAL_API_KEY", "")
 ENRICHMENT_MAX_ITEMS = 10  # Cap enriched items per response
 ENRICHMENT_TIMEOUT_SECONDS = 5.0  # Strict timeout per enrichment
 METADATA_IRI_PREFIX = "regen:"  # Only enrich Regen IRIs
@@ -54,10 +56,15 @@ async def derive_hectares_for_iri(
     if not iri or not iri.startswith(METADATA_IRI_PREFIX):
         return None
 
+    if not KOI_INTERNAL_API_KEY:
+        logger.warning("KOI_INTERNAL_API_KEY not configured - skipping enrichment")
+        return None
+
     try:
         response = await client.post(
             f"{KOI_API_ENDPOINT}/metadata/hectares",
             json={"iri": iri, "force_refresh": force_refresh},
+            headers={"X-Internal-API-Key": KOI_INTERNAL_API_KEY},
             timeout=ENRICHMENT_TIMEOUT_SECONDS
         )
 
